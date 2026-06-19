@@ -1,0 +1,7 @@
+For the availability window, don't forget to drop movies that END after the end of the availability period. Imagine that a user would say "I gotta leave the festival at 5pm at the latest to catch my train".
+
+
+
+As for the implementation, you don't have to care too much about the complexity, as long as it's not combinatorial.
+
+And actually, let's even do a first implementation that uses a combinatorial algorithm. I think that with all discarded movies, we should have at most 40 movies, so even this brute force version shouldn't be TOO long. Basically I want to check the workflow first, and implement a better algorithm later

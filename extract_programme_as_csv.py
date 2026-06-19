@@ -7,9 +7,9 @@ of any ongoing pipeline. Output feeds into a (future) browser-based planner,
 so the CSV is the source of truth -- this script does not do any planning.
 
 Usage: just run it.
-    python scrape_programme.py
+    python extract_programme_as_csv.py
 
-Edit URL / OUTPUT_MOVIES_CSV_PATH below to change input/output.
+Edit URL / OUTPUT_CSV_PATH below to change input/output.
 """
 
 from __future__ import annotations
@@ -27,9 +27,16 @@ from bs4 import BeautifulSoup, Comment
 # ---------------------------------------------------------------------------
 
 URL = "https://nifff.ch/programme/"
-OUTPUT_MOVIES_CSV_PATH = "movies.csv"
-OUTPUT_PRIORITY_CSV_PATH = "priority.csv"
-OUTPUT_AVAILABILITY_CSV_PATH = "availability.csv"
+OUTPUT_CSV_PATH = "movies.csv"
+OUTPUT_PRIORITY_CSV_PATH = "priority_empty.csv"
+
+# Titles to skip entirely -- entries that show up under "Movies item" but
+# aren't actually screenings (e.g. multi-day exhibitions with no fixed
+# showtime, only opening hours). Add to this list if next year's programme
+# has similar entries; matched against the cleaned-up title text.
+EXCLUDED_TITLES = {
+    "Maison d'Ailleurs : Le Regard dans les Univers de Frederik Peeters",
+}
 
 REQUEST_TIMEOUT_SECONDS = 30
 REQUEST_HEADERS = {
@@ -69,7 +76,9 @@ class Movie:
             self.screenings = []
 
 
-MAX_SCREENINGS = 3
+MAX_SCREENINGS = 9  # the festival runs for 9 days (03.07-11.07); a single
+                     # entry's date range can expand to at most that many
+                     # Screening rows (see _expand_date_range)
 
 
 # ---------------------------------------------------------------------------
@@ -264,7 +273,7 @@ _TECHNICAL_INFO_RE = re.compile(r"^(?P<country>[A-Za-z/]+),\s*(?P<year>\d{4}),\s
 _RUNTIME_ONLY_RE = re.compile(r"^(?P<length>\d+)'$")
 
 _SCREENING_RE = re.compile(
-    r"^(?P<date>\d{2}\.\d{2})(?:\s*-\s*\d{2}\.\d{2})?,\s*"
+    r"^(?P<date>\d{2}\.\d{2})(?:\s*-\s*(?P<date_end>\d{2}\.\d{2}))?,\s*"
     r"(?P<cinema>[^,]+),\s*"
     r"(?P<time>\d{2}:\d{2})(?:\s*-\s*(?P<time_end>\d{2}:\d{2}))?$"
 )
@@ -308,13 +317,43 @@ def _minutes_between(start_hhmm: str, end_hhmm: str) -> int:
     return (end_h * 60 + end_m) - (start_h * 60 + start_m)
 
 
+def _expand_date_range(date_start: str, date_end: str) -> list[str]:
+    """Expands a "dd.mm - dd.mm" range into a list of "dd.mm" strings, one
+    per day, inclusive of both endpoints.
+
+    All dates observed on this page fall within a single month (the
+    festival runs for at most a couple of weeks in July), so this only
+    handles day-of-month arithmetic within one month -- it does not handle
+    a range crossing a month boundary (e.g. "30.06 - 02.07"). If that ever
+    occurs, this will raise rather than silently producing wrong dates.
+    """
+    start_day, start_month = (int(part) for part in date_start.split("."))
+    end_day, end_month = (int(part) for part in date_end.split("."))
+
+    if start_month != end_month:
+        raise ValueError(
+            f"Date range '{date_start} - {date_end}' crosses a month boundary; "
+            "_expand_date_range does not support this."
+        )
+
+    return [f"{day:02d}.{start_month:02d}" for day in range(start_day, end_day + 1)]
+
+
 def parse_information_right(raw: str) -> tuple[list[Screening], str]:
     """Splits the raw "Information right" text into a list of Screening
-    objects (date/cinema/time, each collapsed to its start value if the
-    source listed a range), plus a `derived_length` string ("NNN'") to use
-    as a fallback Length when the movie's own Information left didn't
+    objects (date/cinema/time), plus a `derived_length` string ("NNN'") to
+    use as a fallback Length when the movie's own Information left didn't
     specify one (this only happens for workshops/installations whose
     "runtime" is really just their listed opening-hours window).
+
+    A screening listing a DATE RANGE (e.g. an ongoing installation open
+    "04.07 - 11.07") is expanded into one Screening per day in that range,
+    all sharing the same cinema and start time -- rather than collapsing to
+    a single Screening on the start date, which would silently lose the
+    fact that it's available on every one of those days. A TIME range
+    (e.g. "13:00 - 19:00") is NOT expanded the same way -- only its start
+    time is kept, since that's the actual opening time of that single
+    day's session.
     """
     lines = raw.split("\n") if raw else []
 
@@ -329,19 +368,25 @@ def parse_information_right(raw: str) -> tuple[list[Screening], str]:
             # whole scrape.
             continue
 
-        screenings.append(
-            Screening(
-                date=match.group("date"),
-                cinema=clean_single_line(match.group("cinema")),
-                time=match.group("time"),
-            )
-        )
+        cinema = clean_single_line(match.group("cinema"))
+        time = match.group("time")
+        date_end = match.group("date_end")
+
+        if date_end:
+            dates = _expand_date_range(match.group("date"), date_end)
+        else:
+            dates = [match.group("date")]
+
+        for date in dates:
+            screenings.append(Screening(date=date, cinema=cinema, time=time))
 
         time_end = match.group("time_end")
         if time_end and not derived_length:
-            derived_length = f"{_minutes_between(match.group('time'), time_end)}'"
+            derived_length = f"{_minutes_between(time, time_end)}'"
 
     return screenings, derived_length
+
+
 
 
 def parse_movie_item(item_tag) -> Movie:
@@ -395,8 +440,14 @@ def parse_movies(html: str) -> list[Movie]:
         string=lambda node: isinstance(node, Comment) and node.strip() == "Movies item"
     ):
         item_tag = item_open.find_next_sibling()
-        if item_tag is not None:
-            movies.append(parse_movie_item(item_tag))
+        if item_tag is None:
+            continue
+
+        title = extract_title(item_tag)
+        if title in EXCLUDED_TITLES:
+            continue
+
+        movies.append(parse_movie_item(item_tag))
 
     return movies
 
@@ -436,15 +487,19 @@ def write_movies_csv(movies: list[Movie], path: str) -> None:
                     file=sys.stderr,
                 )
             writer.writerow(_csv_row(movie))
-            
-            
+
+
 def write_priority_csv(movies: list[Movie], path: str) -> None:
+    """Writes a blank priority template (Title, Priority) for the user to
+    fill in by hand. Every movie starts at "0" (neutral); leaving it as-is
+    just means "no opinion yet" rather than "actively don't want to see
+    this".
+    """
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["Title", "Priority"])
         for movie in movies:
-            writer.writerow([movie.title, "-1"])
-            
+            writer.writerow([movie.title, "0"])
 
 
 # ---------------------------------------------------------------------------
@@ -461,10 +516,10 @@ def main() -> None:
     movies = parse_movies(response.text)
     print(f"Found {len(movies)} entries.", file=sys.stderr)
 
-    print(f"Writing CSV to {OUTPUT_MOVIES_CSV_PATH} ...", file=sys.stderr)
-    write_movies_csv(movies, OUTPUT_MOVIES_CSV_PATH)
-    
-    print(f"Writing priority list to {OUTPUT_PRIORITY_CSV_PATH}/")
+    print(f"Writing CSV to {OUTPUT_CSV_PATH} ...", file=sys.stderr)
+    write_movies_csv(movies, OUTPUT_CSV_PATH)
+
+    print(f"Writing priority list to {OUTPUT_PRIORITY_CSV_PATH} ...", file=sys.stderr)
     write_priority_csv(movies, OUTPUT_PRIORITY_CSV_PATH)
 
     print("Done.", file=sys.stderr)
