@@ -301,6 +301,16 @@ function downloadSchedule() {
   downloadTextFile("picked_movies.csv", buildCsv(header, rows));
 }
 
+function formatCountry(country) {
+  // Browsers should already be able to wrap at "/" with no help (it's a
+  // standard line-break opportunity, same as in a URL) -- but Chrome
+  // specifically doesn't reliably do this inside a narrow fixed-width
+  // table cell. A zero-width space right after each slash gives it an
+  // explicit, INVISIBLE break point -- no inserted spaces, no visible
+  // change to the text, it just lets the line wrap there if it needs to.
+  return country ? country.replace(/\//g, "/\u200B") : "";
+}
+
 function renderMoviesTable(movieList) {
   moviesTbody.innerHTML = "";
 
@@ -324,7 +334,7 @@ function renderMoviesTable(movieList) {
       </td>
       <td class="movie-title">${movie.title}</td>
       <td class="movie-meta">${movie.categories || "&mdash;"}</td>
-      <td class="movie-meta">${movie.country || "&mdash;"}</td>
+      <td class="movie-meta">${formatCountry(movie.country) || "&mdash;"}</td>
       <td class="movie-meta">${movie.year || "&mdash;"}</td>
       <td>${formatScreeningsCell(movie.screenings)}</td>
     `;
