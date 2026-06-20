@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from planner_core import MovieOpt, ScreeningOpt, _conflicts, solve, solve_optimal_bruteforce
+from planner_core import MovieOpt, ScreeningOpt, _conflicts, solve
 
 # The festival's first day, used as day index 0 for the minutes-since-start
 # axis. Must match the actual festival dates for the year movies.csv was
@@ -52,6 +52,13 @@ def _ddmm_to_day_index(ddmm: str) -> int:
     day, _month = (int(part) for part in ddmm.split("."))
     start_day, _start_month = (int(part) for part in FESTIVAL_START_DDMM.split("."))
     return day - start_day
+
+
+def day_index_to_ddmm(day_index: int) -> str:
+    """Inverse of _ddmm_to_day_index: converts a 0-based day offset back
+    into "dd.mm", for labeling UI elements with real calendar dates."""
+    start_day, start_month = (int(part) for part in FESTIVAL_START_DDMM.split("."))
+    return f"{start_day + day_index:02d}.{start_month:02d}"
 
 
 def _hhmm_to_minutes(hhmm: str) -> int:
