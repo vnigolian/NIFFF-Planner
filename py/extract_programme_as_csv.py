@@ -27,8 +27,7 @@ from bs4 import BeautifulSoup, Comment
 # ---------------------------------------------------------------------------
 
 URL = "https://nifff.ch/programme/"
-OUTPUT_CSV_PATH = "movies.csv"
-OUTPUT_PRIORITY_CSV_PATH = "priority_empty.csv"
+OUTPUT_CSV_PATH = "../data/movies.csv"
 
 # Titles to skip entirely -- entries that show up under "Movies item" but
 # aren't actually screenings (e.g. multi-day exhibitions with no fixed
@@ -413,6 +412,79 @@ def parse_movie_item(item_tag) -> Movie:
 # ---------------------------------------------------------------------------
 
 
+CEREMONY_EXTRA_MINUTES = 60  # opening remarks/awards before the film itself
+
+
+def _add_minutes_to_length(length: str, extra_minutes: int) -> str:
+    """Adds `extra_minutes` to a "NNN'" length string, returning the same
+    format. Returns the input unchanged if it's blank or not parseable
+    (defensive: some movie entries have no listed length at all)."""
+    if not length:
+        return length
+    try:
+        minutes = int(length.rstrip("'"))
+    except ValueError:
+        return length
+    return f"{minutes + extra_minutes}'"
+
+
+def _split_ceremony_movies(movies: list[Movie]) -> list[Movie]:
+    """The festival lists ceremony screenings as part of a regular movie
+    entry: a movie whose Categories include "Ceremonies" has its FIRST
+    listed screening actually be the ceremony itself (with the film
+    screening immediately after, as part of the ceremony), while any
+    remaining screenings are genuinely separate, standalone showings of
+    the same film.
+
+    To represent this correctly for scheduling purposes (so a user can
+    independently prioritize "attend the ceremony" vs. "just watch the
+    film another time"), any such movie is split into two entries:
+      - "Cérémonie + {title}": same metadata, ONLY the first screening,
+        with CEREMONY_EXTRA_MINUTES added to its length (the ceremony
+        itself -- remarks, awards -- runs before the film and isn't
+        reflected in the film's own listed runtime).
+      - "{title}" (unchanged): same metadata, all REMAINING screenings.
+
+    If there's only one screening to begin with, only the ceremony
+    entry is created (there's nothing left for a second entry).
+    """
+    result = []
+    for movie in movies:
+        categories = [c.strip() for c in movie.categories.split(",")]
+        if "Ceremonies" not in categories or not movie.screenings:
+            result.append(movie)
+            continue
+
+        ceremony_screening, *remaining_screenings = movie.screenings
+
+        result.append(
+            Movie(
+                title=f"Cérémonie + {movie.title}",
+                categories=movie.categories,
+                country=movie.country,
+                year=movie.year,
+                length=_add_minutes_to_length(movie.length, CEREMONY_EXTRA_MINUTES),
+                premiere=movie.premiere,
+                screenings=[ceremony_screening],
+            )
+        )
+
+        if remaining_screenings:
+            result.append(
+                Movie(
+                    title=movie.title,
+                    categories=movie.categories,
+                    country=movie.country,
+                    year=movie.year,
+                    length=movie.length,
+                    premiere=movie.premiere,
+                    screenings=remaining_screenings,
+                )
+            )
+
+    return result
+
+
 def parse_movies(html: str) -> list[Movie]:
     soup = BeautifulSoup(html, "lxml")
 
@@ -449,7 +521,7 @@ def parse_movies(html: str) -> list[Movie]:
 
         movies.append(parse_movie_item(item_tag))
 
-    return movies
+    return _split_ceremony_movies(movies)
 
 
 # ---------------------------------------------------------------------------
@@ -518,9 +590,6 @@ def main() -> None:
 
     print(f"Writing CSV to {OUTPUT_CSV_PATH} ...", file=sys.stderr)
     write_movies_csv(movies, OUTPUT_CSV_PATH)
-
-    print(f"Writing priority list to {OUTPUT_PRIORITY_CSV_PATH} ...", file=sys.stderr)
-    write_priority_csv(movies, OUTPUT_PRIORITY_CSV_PATH)
 
     print("Done.", file=sys.stderr)
 
