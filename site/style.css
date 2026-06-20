@@ -89,7 +89,7 @@ a {
 /* ----------------------------------------------------------------- main */
 
 main {
-  max-width: 64rem;
+  max-width: 84rem;
   margin: 0 auto;
   padding: 2rem 1.25rem 4rem;
   display: flex;
@@ -269,6 +269,39 @@ main {
   }
 }
 
+.priority-file-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1.1rem;
+  font-size: 0.85rem;
+}
+
+.priority-file-box__label {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: rgba(20, 21, 26, 0.6);
+}
+
+.priority-file-box__feedback {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--accent);
+}
+
+.panel-heading--with-action {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.panel-heading--with-action .button {
+  flex-shrink: 0;
+}
+
 .movies-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -315,6 +348,12 @@ main {
 
 .button--secondary:hover {
   background: var(--ink-soft);
+}
+
+.button--secondary:disabled {
+  background: rgba(20, 21, 26, 0.25);
+  color: rgba(239, 231, 216, 0.6);
+  cursor: not-allowed;
 }
 
 .bulk-priority__feedback {
@@ -376,8 +415,34 @@ input[type="number"]:focus-visible {
 
 .movies-table {
   width: 100%;
+  min-width: 40rem;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.9rem;
+}
+
+.col-title {
+  width: 33%;
+}
+
+.col-category {
+  width: 12%;
+}
+
+.col-country {
+  width: 6%;
+}
+
+.col-year {
+  width: 6%;
+}
+
+.col-screenings {
+  width: 22%;
+}
+
+.col-priority {
+  width: 7%;
 }
 
 .movies-table thead th {

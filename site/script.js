@@ -17,15 +17,21 @@ const movieFilterInput = document.getElementById("movie-filter");
 const bulkPriorityValueInput = document.getElementById("bulk-priority-value");
 const bulkPriorityApplyButton = document.getElementById("bulk-priority-apply");
 const bulkPriorityFeedback = document.getElementById("bulk-priority-feedback");
+const downloadPrioritiesButton = document.getElementById("download-priorities");
+const uploadPrioritiesTriggerButton = document.getElementById("upload-priorities-trigger");
+const uploadPrioritiesInput = document.getElementById("upload-priorities-input");
+const priorityFileFeedback = document.getElementById("priority-file-feedback");
 const runButton = document.getElementById("run-button");
 const resultsSection = document.getElementById("results-section");
 const resultsSummary = document.getElementById("results-summary");
+const downloadScheduleButton = document.getElementById("download-schedule");
 const warningsBlock = document.getElementById("warnings-block");
 const scheduleList = document.getElementById("schedule-list");
 const discardedList = document.getElementById("discarded-list");
 
 let pyodide = null;
 let movies = []; // [{title, categories, country, year, length, premiere, screenings}]
+let lastScheduleResult = []; // populated after a successful run, used for the download button
 
 function setStatus(text, percent) {
   statusLine.textContent = text;
@@ -113,6 +119,188 @@ function setRowPriority(row, value) {
   stub.classList.toggle("priority-stub--active", Number(value) > 0);
 }
 
+function csvEscape(value) {
+  const text = value == null ? "" : String(value);
+  if (/[",\n\r]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
+function buildCsv(header, rows) {
+  const lines = [header.map(csvEscape).join(",")];
+  for (const row of rows) {
+    lines.push(row.map(csvEscape).join(","));
+  }
+  return lines.join("\r\n") + "\r\n";
+}
+
+function downloadTextFile(filename, text) {
+  const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+// Minimal CSV parser: handles quoted fields (with embedded commas/quotes/
+// newlines) since movie titles in this dataset really do contain commas.
+// Not a general-purpose parser, but sufficient for the simple two-column
+// (or fixed-shape) files this page produces and consumes.
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let inQuotes = false;
+  let i = 0;
+
+  while (i < text.length) {
+    const char = text[i];
+
+    if (inQuotes) {
+      if (char === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i += 2;
+          continue;
+        }
+        inQuotes = false;
+        i += 1;
+        continue;
+      }
+      field += char;
+      i += 1;
+      continue;
+    }
+
+    if (char === '"') {
+      inQuotes = true;
+      i += 1;
+      continue;
+    }
+    if (char === ",") {
+      row.push(field);
+      field = "";
+      i += 1;
+      continue;
+    }
+    if (char === "\r") {
+      i += 1;
+      continue;
+    }
+    if (char === "\n") {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+      i += 1;
+      continue;
+    }
+    field += char;
+    i += 1;
+  }
+
+  if (field.length > 0 || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+
+  return rows.filter((r) => !(r.length === 1 && r[0] === ""));
+}
+
+function downloadPriorities() {
+  const priorities = collectPriorities();
+  const rows = Object.entries(priorities).map(([title, priority]) => [title, priority]);
+  const csv = buildCsv(["Title", "Priority"], rows);
+  downloadTextFile("priority.csv", csv);
+}
+
+function applyUploadedPriorities(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const rows = parseCsv(String(reader.result));
+      if (rows.length === 0) {
+        priorityFileFeedback.textContent = "That file looks empty.";
+        return;
+      }
+
+      const header = rows[0].map((cell) => cell.trim().toLowerCase());
+      const titleIdx = header.indexOf("title");
+      const priorityIdx = header.indexOf("priority");
+      if (titleIdx === -1 || priorityIdx === -1) {
+        priorityFileFeedback.textContent = 'Expected a "Title,Priority" CSV \u2014 columns not found.';
+        return;
+      }
+
+      const priorityByTitle = new Map();
+      for (const row of rows.slice(1)) {
+        const title = row[titleIdx];
+        const priority = parseInt(row[priorityIdx], 10);
+        if (title) {
+          priorityByTitle.set(title, Number.isFinite(priority) ? priority : 0);
+        }
+      }
+
+      let matched = 0;
+      moviesTbody.querySelectorAll("tr").forEach((tableRow) => {
+        if (priorityByTitle.has(tableRow.dataset.title)) {
+          setRowPriority(tableRow, priorityByTitle.get(tableRow.dataset.title));
+          matched += 1;
+        }
+      });
+
+      const unmatched = priorityByTitle.size - matched;
+      priorityFileFeedback.textContent =
+        unmatched > 0
+          ? `Applied ${matched} priorities (${unmatched} title(s) in the file weren't found in this year's list).`
+          : `Applied ${matched} priorities.`;
+    } catch (err) {
+      console.error(err);
+      priorityFileFeedback.textContent = "Couldn't read that file. Check the console for details.";
+    }
+  };
+  reader.readAsText(file);
+}
+
+function downloadSchedule() {
+  if (lastScheduleResult.length === 0) {
+    return;
+  }
+
+  const header = [
+    "Title", "Categories", "Country", "Year", "Length", "Premiere",
+    "Date 1", "Cinema 1", "Time 1",
+    "Date 2", "Cinema 2", "Time 2",
+    "Date 3", "Cinema 3", "Time 3",
+    "Date 4", "Cinema 4", "Time 4",
+    "Date 5", "Cinema 5", "Time 5",
+    "Date 6", "Cinema 6", "Time 6",
+    "Date 7", "Cinema 7", "Time 7",
+    "Date 8", "Cinema 8", "Time 8",
+    "Date 9", "Cinema 9", "Time 9",
+  ];
+
+  const rows = lastScheduleResult.map((entry) => {
+    const row = [
+      entry.title, entry.categories, entry.country, entry.year, entry.length, entry.premiere,
+      entry.date, entry.cinema, entry.time,
+    ];
+    // Slots 2-9 are always blank: each picked movie has exactly one chosen
+    // screening, written into slot 1 above.
+    while (row.length < header.length) {
+      row.push("");
+    }
+    return row;
+  });
+
+  downloadTextFile("picked_movies.csv", buildCsv(header, rows));
+}
+
 function renderMoviesTable(movieList) {
   moviesTbody.innerHTML = "";
 
@@ -120,13 +308,7 @@ function renderMoviesTable(movieList) {
     const tr = document.createElement("tr");
     tr.dataset.title = movie.title;
 
-    const countryYear = [movie.country, movie.year].filter(Boolean).join(", ");
-
     tr.innerHTML = `
-      <td class="movie-title">${movie.title}</td>
-      <td class="movie-meta">${movie.categories || "&mdash;"}</td>
-      <td class="movie-meta">${countryYear || "&mdash;"}</td>
-      <td>${formatScreeningsCell(movie.screenings)}</td>
       <td>
         <span class="priority-stub">
           <input
@@ -140,6 +322,11 @@ function renderMoviesTable(movieList) {
           />
         </span>
       </td>
+      <td class="movie-title">${movie.title}</td>
+      <td class="movie-meta">${movie.categories || "&mdash;"}</td>
+      <td class="movie-meta">${movie.country || "&mdash;"}</td>
+      <td class="movie-meta">${movie.year || "&mdash;"}</td>
+      <td>${formatScreeningsCell(movie.screenings)}</td>
     `;
 
     moviesTbody.appendChild(tr);
@@ -303,6 +490,9 @@ function renderDiscarded(discarded) {
 }
 
 function renderResult(result) {
+  lastScheduleResult = result.schedule;
+  downloadScheduleButton.disabled = result.schedule.length === 0;
+
   const successRate =
     result.n_movies_with_priority > 0
       ? Math.round((100 * result.n_movies_selected) / result.n_movies_with_priority)
@@ -347,8 +537,7 @@ async function boot() {
   setStatus("Booting projector\u2026", 8);
   pyodide = await loadPyodide();
 
-  setStatus("Loading the planner\u2026", 35);
-  await pyodide.loadPackage("micropip");
+  setStatus("Loading the planner\u2026", 40);
 
   // Fetch the Python source files and write them into Pyodide's virtual
   // filesystem so they can be imported like normal local modules.
@@ -389,6 +578,17 @@ movieFilterInput.addEventListener("input", () => {
 });
 bulkPriorityApplyButton.addEventListener("click", applyBulkPriority);
 runButton.addEventListener("click", runPlan);
+
+downloadPrioritiesButton.addEventListener("click", downloadPriorities);
+uploadPrioritiesTriggerButton.addEventListener("click", () => uploadPrioritiesInput.click());
+uploadPrioritiesInput.addEventListener("change", () => {
+  const file = uploadPrioritiesInput.files[0];
+  if (file) {
+    applyUploadedPriorities(file);
+  }
+  uploadPrioritiesInput.value = ""; // allow re-uploading the same filename later
+});
+downloadScheduleButton.addEventListener("click", downloadSchedule);
 
 boot().catch((err) => {
   console.error(err);

@@ -77,15 +77,28 @@
         </div>
         <p id="bulk-priority-feedback" class="bulk-priority__feedback" aria-live="polite"></p>
 
+        <div class="priority-file-box">
+          <span class="priority-file-box__label">Priorities:</span>
+          <button id="download-priorities" class="button button--secondary" type="button">
+            Download as CSV
+          </button>
+          <button id="upload-priorities-trigger" class="button button--secondary" type="button">
+            Load from CSV&hellip;
+          </button>
+          <input type="file" id="upload-priorities-input" accept=".csv" hidden />
+          <span id="priority-file-feedback" class="priority-file-box__feedback" aria-live="polite"></span>
+        </div>
+
         <div class="table-wrap">
           <table id="movies-table" class="movies-table">
             <thead>
               <tr>
-                <th scope="col" class="col-title">Title</th>
-                <th scope="col" class="col-meta">Category</th>
-                <th scope="col" class="col-meta">Country / Year</th>
-                <th scope="col" class="col-screenings">Screenings</th>
                 <th scope="col" class="col-priority">Priority</th>
+                <th scope="col" class="col-title">Title</th>
+                <th scope="col" class="col-category">Category</th>
+                <th scope="col" class="col-country">Country</th>
+                <th scope="col" class="col-year">Year</th>
+                <th scope="col" class="col-screenings">Screenings</th>
               </tr>
             </thead>
             <tbody id="movies-tbody"></tbody>
@@ -97,9 +110,14 @@
   </section>
 
   <section id="results-section" class="panel panel--results" hidden>
-    <div class="panel-heading">
-      <h2>Your schedule</h2>
-      <p id="results-summary" class="panel-subtitle"></p>
+    <div class="panel-heading panel-heading--with-action">
+      <div>
+        <h2>Your schedule</h2>
+        <p id="results-summary" class="panel-subtitle"></p>
+      </div>
+      <button id="download-schedule" class="button button--secondary" type="button" disabled>
+        Download picked movies
+      </button>
     </div>
 
     <div id="warnings-block" class="warnings-block" hidden></div>

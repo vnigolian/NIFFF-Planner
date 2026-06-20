@@ -1,5 +1,7 @@
 # NIFFF Planner (web)
 
+Website available [here][https://vnigolian.github.io/NIFFF-Planner/site/]
+
 A static, no-backend tool for planning a festival schedule: rank the movies
 you want to see, and it builds a non-conflicting schedule for you. Runs
 entirely in your browser via [Pyodide](https://pyodide.org) — nothing you
