@@ -23,7 +23,7 @@ from planner_io import (
     plan,
 )
 
-MOVIES_CSV_PATH = "data/movies.csv"
+MOVIES_CSV_PATH = "../data/movies.csv"
 
 
 class Screening:

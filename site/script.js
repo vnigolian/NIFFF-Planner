@@ -3,8 +3,8 @@
  * This file's only job is: boot Pyodide, render the movie list, collect
  * the user's priority edits, hand them to Python, and render whatever
  * Python sends back. All scraping/parsing/scheduling logic lives in
- * py/app.py, py/planner_core.py, and py/planner_io.py -- this file does
- * not re-implement any of it.
+ * ../py/app.py, ../py/planner_core.py, and ../py/planner_io.py -- this
+ * file does not re-implement any of it.
  */
 
 const statusLine = document.getElementById("status-line");
@@ -215,22 +215,54 @@ function renderSchedule(schedule) {
   scheduleList.innerHTML = "";
 
   if (schedule.length === 0) {
-    scheduleList.innerHTML = `<li class="discard-item">Nothing scheduled yet &mdash; set a few priorities above and build again.</li>`;
+    scheduleList.innerHTML = `<p class="subsection-note">Nothing scheduled yet &mdash; set a few priorities above and build again.</p>`;
     return;
   }
 
+  // The backend already returns `schedule` sorted by absolute start time,
+  // so entries sharing the same `date` are already contiguous -- group
+  // them in a single pass rather than re-sorting.
+  const dayBlocks = [];
+  let currentDate = null;
+  let currentEntries = null;
+
   for (const entry of schedule) {
-    const li = document.createElement("li");
-    li.className = "ticket-item";
-    li.innerHTML = `
-      <div class="ticket-item__time">${entry.time}<span>${entry.date}</span></div>
-      <div>
-        <div class="ticket-item__title">${entry.title}</div>
-        <div class="ticket-item__cinema">${entry.cinema}</div>
-      </div>
-      <div class="ticket-item__priority">priority ${entry.priority}</div>
-    `;
-    scheduleList.appendChild(li);
+    if (entry.date !== currentDate) {
+      currentDate = entry.date;
+      currentEntries = [];
+      dayBlocks.push({ date: currentDate, entries: currentEntries });
+    }
+    currentEntries.push(entry);
+  }
+
+  for (const block of dayBlocks) {
+    const section = document.createElement("section");
+    section.className = "schedule-day";
+
+    const heading = document.createElement("h4");
+    heading.className = "schedule-day__heading";
+    heading.textContent = block.date;
+    section.appendChild(heading);
+
+    const list = document.createElement("ol");
+    list.className = "ticket-list";
+
+    for (const entry of block.entries) {
+      const li = document.createElement("li");
+      li.className = "ticket-item";
+      li.innerHTML = `
+        <div class="ticket-item__time">${entry.time}<span>${entry.date}</span></div>
+        <div>
+          <div class="ticket-item__title">${entry.title}</div>
+          <div class="ticket-item__cinema">${entry.cinema}</div>
+        </div>
+        <div class="ticket-item__priority">priority ${entry.priority}</div>
+      `;
+      list.appendChild(li);
+    }
+
+    section.appendChild(list);
+    scheduleList.appendChild(section);
   }
 }
 
@@ -322,7 +354,7 @@ async function boot() {
   // filesystem so they can be imported like normal local modules.
   const pyModules = ["planner_core.py", "planner_io.py", "app.py"];
   for (const filename of pyModules) {
-    const response = await fetch(`py/${filename}`);
+    const response = await fetch(`../py/${filename}`);
     const source = await response.text();
     pyodide.FS.writeFile(filename, source);
   }

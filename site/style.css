@@ -472,6 +472,24 @@ input[type="number"]:focus-visible {
   font-family: var(--font-mono);
 }
 
+.schedule-days {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.schedule-day__heading {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(20, 21, 26, 0.6);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0.3rem;
+}
+
 .ticket-list,
 .discard-list {
   list-style: none;
