@@ -19,11 +19,16 @@ The current text are automatically translated.
 This is a **minimal implementation**: load the movie list, set priorities and
 availability, build a schedule, see what got cut and why. Scheduling
 works by running a fast random greedy assignment many times (however
-many "simulations" you ask for) and keeping the best result — there's no
-guarantee of finding the absolute best possible schedule, but each run
+many "simulations" you ask for), refining EACH one with a quick swap
+pass (a discarded movie that's worth swapping in over whatever currently
+blocks it gets swapped in — catches a real blind spot of a single greedy
+pass, where a lower-priority movie can end up placed before a much
+higher-priority one is even considered), and keeping the best of the
+refined results. There's still no guarantee of finding the absolute best
+possible schedule, but each run
 is quite fast even at full festival scale, so running
 hundreds or thousands of simulations is still possible, given enough time. 
-Although in practice, 1000 runs give good enough results.
+Although in practice, 100 runs give good enough results.
 The page also shows the min/mean/max total priority across all simulations, so
 you can get a feel for how much variance there is and whether running
 more would likely help.
@@ -190,11 +195,15 @@ py/
                     PyMuPDF INSIDE the function, not at module level, so
                     loading app.py at normal boot never requires it.
   planner_core.py  Pure combinatorial solvers: solve() (fast, random,
-                    always-feasible but not optimal), solve_best_of_n()
-                    (runs solve() many times, keeps the best -- a cheap
-                    middle ground), and solve_optimal() (exact branch-and-
-                    bound, NP-hard problem so no runtime guarantee -- see
-                    its docstring)
+                    always-feasible but not optimal), refine_with_swaps()
+                    (a quick local-search pass: swaps a discarded movie
+                    in over whatever currently blocks it, when that's a
+                    net improvement -- catches solve()'s single-greedy-
+                    pass blind spot), solve_best_of_n() (runs solve()
+                    many times, refines every trial, keeps the best --
+                    a cheap middle ground), and solve_optimal() (exact
+                    branch-and-bound, NP-hard problem so no runtime
+                    guarantee -- see its docstring)
   clique_bound.py  A tight, validated upper bound used by
                     solve_optimal()'s pruning (per-day clique-aware
                     bipartite matching)

@@ -144,7 +144,7 @@ def run_plan(
     availability_rows: list,
     min_break_minutes: int = 0,
     algorithm: str = "simulations",
-    n_simulations: int = 200,
+    n_simulations: int = 100,
     objective: str = "linear",
 ) -> dict:
     """Runs the planner against the cached movie list (see load_movies()).
@@ -465,10 +465,10 @@ def build_highlighted_official_pdf(schedule: list[dict]) -> dict:
     match_result = match_schedule_to_pdf_layout(schedule)
 
     doc = fitz.open(OFFICIAL_PDF_PATH)
-    disc_color = (176/255, 87/255, 249/255)
+    disc_color = (176 / 255, 87 / 255, 249 / 255)
     for m in match_result["matched"]:
         page = doc[m["page"]]
-        # A small red circle just to the left of the title's own
+        # A small colored circle just to the left of the title's own
         # bounding box -- positioned so it doesn't overlap the text
         # itself, on either page (titles never start right at the
         # grid's left edge, so there's always a little room to its

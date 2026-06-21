@@ -316,7 +316,7 @@ def plan(
     availability: dict[int, AvailabilityWindow],
     min_break_minutes: int,
     algorithm: str = "simulations",
-    n_simulations: int = 200,
+    n_simulations: int = 100,
     objective: str = "linear",
 ) -> PlanResult:
     """`algorithm`:

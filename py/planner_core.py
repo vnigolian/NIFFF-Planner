@@ -123,6 +123,95 @@ WEIGHT_FUNCTIONS = {
 }
 
 
+def refine_with_swaps(
+    movies: list[MovieOpt],
+    min_break: int,
+    chosen: dict[int, ScreeningOpt],
+    weight_fn,
+) -> tuple[int, dict]:
+    """Post-processes a single solve()/solve_best_of_n() result, looking
+    for discarded movies that are worth swapping in over whatever
+    currently-selected movie(s) block them.
+
+    Why this can find real improvements: solve() is a single greedy pass
+    over a randomly shuffled movie order -- if a low-priority movie
+    happens to get placed before a much higher-priority one is even
+    considered, the higher-priority one is discarded as "conflicts with"
+    the lower one, even though swapping them would obviously be better.
+    This is a textbook greedy-algorithm blind spot, not a bug -- and a
+    bounded local-search refinement pass is the standard, well-understood
+    fix for it.
+
+    ALGORITHM: repeatedly find the single best-net-gain swap (a discarded
+    movie's best screening, against whichever currently-selected movies
+    block it, weighed by `weight_fn` -- the SAME weight function used to
+    pick the best of several solve() trials, so this respects whichever
+    objective -- linear/quadratic/exponential -- is active) and apply it,
+    until no positive-net-gain swap remains.
+
+    CORRECTNESS: blockers are recomputed FRESH against the CURRENT state
+    on every iteration, never from a stale snapshot -- this matters,
+    since two swaps that each look independently valid against the
+    ORIGINAL solve() result can still conflict with EACH OTHER once both
+    are applied (e.g. two discarded movies that both want the same
+    vacated slot). Recomputing fresh every round means each accepted
+    swap is checked against reality as it stands, not against a
+    snapshot that an earlier swap may have invalidated. Termination is
+    guaranteed: every accepted swap strictly increases total weighted
+    value, which is bounded above by the sum of every movie's weighted
+    priority, so this can't loop forever.
+
+    SCOPE NOTE: a movie displaced by a swap is simply dropped, not
+    re-considered for a different one of ITS OWN other screenings that
+    might now be free -- that would be a deeper re-optimization, not a
+    swap. Out of scope here; mention it if this isn't sufficient.
+
+    Returns (new_linear_total, new_chosen) -- new_linear_total is always
+    the plain LINEAR sum (matching solve()'s own return convention),
+    regardless of which weight_fn was used to drive the search.
+    """
+    chosen = dict(chosen)  # don't mutate the caller's dict
+    movies_by_id = {m.movie_id: m for m in movies}
+    priority_by_id = {m.movie_id: m.priority for m in movies}
+
+    while True:
+        selected_screenings = list(chosen.values())
+
+        best_gain = 0.0
+        best_movie_id = None
+        best_screening = None
+        best_blocker_ids: list[int] = []
+
+        for movie in movies:
+            if movie.movie_id in chosen:
+                continue
+            for screening in movie.screenings:
+                blocker_ids = [
+                    mid
+                    for mid, s in chosen.items()
+                    if _conflicts(screening, s, min_break)
+                ]
+                candidate_value = weight_fn(movie.priority)
+                blockers_value = sum(weight_fn(priority_by_id[mid]) for mid in blocker_ids)
+                net_gain = candidate_value - blockers_value
+                if net_gain > best_gain:
+                    best_gain = net_gain
+                    best_movie_id = movie.movie_id
+                    best_screening = screening
+                    best_blocker_ids = blocker_ids
+
+        if best_movie_id is None:
+            break
+
+        for mid in best_blocker_ids:
+            del chosen[mid]
+        chosen[best_movie_id] = best_screening
+
+    new_linear_total = sum(priority_by_id[mid] for mid in chosen)
+    return new_linear_total, chosen
+
+
+
 def solve_best_of_n(
     movies: list[MovieOpt],
     min_break: int,
@@ -130,7 +219,10 @@ def solve_best_of_n(
     objective: str = "linear",
 ) -> tuple[int, dict, dict]:
     """Runs solve() `n_simulations` times, each with a different random
-    seed, and returns (best_linear_total, best_chosen, stats).
+    seed, REFINES each trial with refine_with_swaps() (see its docstring
+    -- catches cases where a discarded movie is worth swapping in over
+    whatever currently-blocks it, a real blind spot of solve()'s single
+    greedy pass), and returns (best_linear_total, best_chosen, stats).
 
     `objective` selects which WEIGHT FUNCTION is used to decide which of
     the n_simulations runs is "best" -- one of "linear" (weight(p) = p,
@@ -167,7 +259,13 @@ def solve_best_of_n(
     all_linear_totals: list[int] = []
 
     for seed in range(n_simulations):
-        linear_total, chosen = solve(movies, min_break, rng=random.Random(seed))
+        raw_linear_total, raw_chosen = solve(movies, min_break, rng=random.Random(seed))
+        # Refine EVERY trial before comparing, not just the eventual
+        # winner: this problem isn't convex, so a trial that looks
+        # mediocre before refinement can have a much better LOCAL
+        # optimum nearby than the raw-best trial does -- skipping
+        # refinement on the other N-1 trials could mean missing that.
+        linear_total, chosen = refine_with_swaps(movies, min_break, raw_chosen, weight_fn)
         all_linear_totals.append(linear_total)
 
         objective_score = sum(weight_fn(priority_by_movie_id[movie_id]) for movie_id in chosen)

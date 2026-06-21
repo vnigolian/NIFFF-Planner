@@ -875,14 +875,19 @@ async function waitForNextPaint() {
 }
 
 const MAX_N_SIMULATIONS = 10000;
-const DEFAULT_N_SIMULATIONS = 1000;
 
 async function runPlan() {
   const parsedNSimulations = parseInt(nSimulationsInput.value, 10);
   const nSimulations =
     Number.isFinite(parsedNSimulations) && parsedNSimulations >= 1
       ? Math.min(parsedNSimulations, MAX_N_SIMULATIONS)
-      : DEFAULT_N_SIMULATIONS;
+      // Falls back to the input's OWN default (the value="..." attribute
+      // set in index.html), not a separately hardcoded number here --
+      // there's exactly one place that sets this default, the HTML
+      // itself, so the two can never silently drift apart again (this
+      // happened before: this constant and index.html's value="..."
+      // independently went out of sync across a couple of edits).
+      : parseInt(nSimulationsInput.defaultValue, 10);
   const objective = objectiveSelect.value;
 
   const parsedMinBreak = parseInt(minBreakInput.value, 10);
