@@ -465,6 +465,7 @@ def build_highlighted_official_pdf(schedule: list[dict]) -> dict:
     match_result = match_schedule_to_pdf_layout(schedule)
 
     doc = fitz.open(OFFICIAL_PDF_PATH)
+    disc_color = (176/255, 87/255, 249/255)
     for m in match_result["matched"]:
         page = doc[m["page"]]
         # A small red circle just to the left of the title's own
@@ -474,7 +475,7 @@ def build_highlighted_official_pdf(schedule: list[dict]) -> dict:
         # left within the same row).
         center_x = m["x0"] - 8
         center_y = (m["y0"] + m["y1"]) / 2
-        page.draw_circle((center_x, center_y), radius=4, color=(0.8, 0.1, 0.1), fill=(0.8, 0.1, 0.1))
+        page.draw_circle((center_x, center_y), radius=4, color=disc_color, fill=disc_color)
 
     return {
         "pdf_bytes": doc.tobytes(),
