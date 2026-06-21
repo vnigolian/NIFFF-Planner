@@ -4,6 +4,7 @@ Website available [here](https://vnigolian.github.io/NIFFF-Planner/site/)
 
 ## TODOS
 
+* fix break time computation
 * improve UI
 * rename "projector" for "simulator"
 * add break time between movies
