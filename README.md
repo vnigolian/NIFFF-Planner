@@ -1,17 +1,20 @@
-# NIFFF Planner (web)
+# NIFFF Planner Online
 
 Website available [here](https://vnigolian.github.io/NIFFF-Planner/site/)
 
-## TODOS
-
-* make loading faster?
-* finalise readme
-* implement the optimal, MILP-based solver
 
 A static, no-backend tool for planning a festival schedule: rank the movies
 you want to see, and it builds a non-conflicting schedule for you. Runs
 entirely in your browser via [Pyodide](https://pyodide.org) — nothing you
 type leaves your machine, and there's no server involved at all.
+
+## Contributing
+
+Feel free to make suggestions using the Issues system, or directly with PRs.
+A very appreciated improvement would be for some native speakers to provide better translations for Italian, German and Rumantsch.
+The current text are automatically translated.
+
+## Features
 
 This is a **minimal first slice**: load the movie list, set priorities and
 availability, build a schedule, see what got cut and why. Scheduling
@@ -19,9 +22,9 @@ works by running a fast random greedy assignment many times (however
 many "simulations" you ask for) and keeping the best result — there's no
 guarantee of finding the absolute best possible schedule, but each run
 is a fraction of a millisecond even at full festival scale, so running
-hundreds or thousands of simulations is still essentially instant, and
-tends to find a noticeably better schedule than just one run. The page
-also shows the min/mean/max total priority across all simulations, so
+hundreds or thousands of simulations is still possible, given enough time. 
+Although in practice, 1000 runs give good enough results.
+The page also shows the min/mean/max total priority across all simulations, so
 you can get a feel for how much variance there is and whether running
 more would likely help.
 
@@ -49,11 +52,46 @@ displayed max. The UI calls this out explicitly when it's the case.
 and `solve_optimal()` — an exact but potentially slow exhaustive search,
 since this scheduling problem is NP-hard, and only supports the Linear
 objective — kept as library functions for reference/comparison, but
-they're not exposed in the UI.)
+they're not exposed in the UI.) 
+The ultimate goal is to generate optimal schedules, but this requires an MILP solver, but importing one is not compatible with Pyodide.
 
 Bulk-edit-by-category (beyond the free-text filter's "apply to filtered"
 button, which has its own "don't overwrite already-set priorities"
 checkbox) is intentionally not in this version yet.
+
+
+## Translations
+
+UI text lives in `site/lang/<code>.json` — one flat `key: "string"` map
+per language, with `{placeholder}` substitution for dynamic values (e.g.
+`"Loaded {count} movies."`). Movie data itself (titles, categories,
+country codes) is never translated — only the site's own UI chrome.
+
+**Editing an existing language**: open the `.json` file and edit the
+strings directly — it's plain text, no code involved. Keep the
+`{placeholder}` tokens exactly as they appear (same name, same curly
+braces) since those get replaced with real values at runtime; everything
+else is free text.
+
+**Adding a new language**: a static site with no build step can't
+discover files on its own, so this needs two small steps, not just
+dropping in a file:
+1. Copy `site/lang/en.json` to `site/lang/<code>.json` and translate its
+   values (keep every key name exactly as-is).
+2. Add a matching `<option value="<code>">Label</option>` to the
+   `#language-select` dropdown in `site/index.html`.
+
+**Known limitation**: the small `aria-label` on each movie row's
+priority input (screen-reader-only, not visible text) is set once when
+the row is first rendered and won't retroactively update if you switch
+languages mid-session — everything else on the page does update live.
+
+`site/`, `data/`, and `py/` are siblings under the repo root — `site/` is
+NOT self-contained; its `index.html` reaches `data/movies.csv` and
+`py/*.py` via `../` relative paths, which only resolve correctly when
+GitHub Pages serves the **repo root**, not the `site/` folder itself (see
+Deploying below).
+
 
 ## Repo layout
 
@@ -95,38 +133,6 @@ py/
                     handling, the discarded-movies report
 ```
 
-## Translations
-
-UI text lives in `site/lang/<code>.json` — one flat `key: "string"` map
-per language, with `{placeholder}` substitution for dynamic values (e.g.
-`"Loaded {count} movies."`). Movie data itself (titles, categories,
-country codes) is never translated — only the site's own UI chrome.
-
-**Editing an existing language**: open the `.json` file and edit the
-strings directly — it's plain text, no code involved. Keep the
-`{placeholder}` tokens exactly as they appear (same name, same curly
-braces) since those get replaced with real values at runtime; everything
-else is free text.
-
-**Adding a new language**: a static site with no build step can't
-discover files on its own, so this needs two small steps, not just
-dropping in a file:
-1. Copy `site/lang/en.json` to `site/lang/<code>.json` and translate its
-   values (keep every key name exactly as-is).
-2. Add a matching `<option value="<code>">Label</option>` to the
-   `#language-select` dropdown in `site/index.html`.
-
-**Known limitation**: the small `aria-label` on each movie row's
-priority input (screen-reader-only, not visible text) is set once when
-the row is first rendered and won't retroactively update if you switch
-languages mid-session — everything else on the page does update live.
-
-`site/`, `data/`, and `py/` are siblings under the repo root — `site/` is
-NOT self-contained; its `index.html` reaches `data/movies.csv` and
-`py/*.py` via `../` relative paths, which only resolve correctly when
-GitHub Pages serves the **repo root**, not the `site/` folder itself (see
-Deploying below).
-
 ## Running it locally
 
 Browsers won't run Pyodide (or fetch local files) from a plain `file://`
@@ -138,20 +144,6 @@ python3 -m http.server 8000
 
 then open `http://localhost:8000/site/`.
 
-## Deploying
-
-This is a plain static site, no build step — but the folder structure
-matters for GitHub Pages specifically:
-
-1. Push this whole repo (with `site/`, `data/`, `py/`, `README.md` at the
-   root) to GitHub.
-2. In the repo: **Settings → Pages → Source → Deploy from a branch**, pick
-   your branch and **`/ (root)`** as the folder (NOT `/site`) — Pages needs
-   to serve the repo root so the `../data` and `../py` relative paths in
-   `site/index.html` resolve correctly.
-3. Your site will be live at `https://<username>.github.io/<repo>/site/`
-   (note the `/site/` at the end — that's expected, since `index.html`
-   lives there, not at the repo root).
 
 ## Updating the movie list
 
@@ -173,11 +165,9 @@ file.
   repaint or respond to clicks — this is a known Pyodide tradeoff (see
   their docs on Web Workers), not a bug. In practice this is brief even
   at thousands of simulations, since each run is sub-millisecond.
-- **No weighting-scheme picker yet.** There's exactly one scoring rule:
-  maximize total priority.
-- **No bulk-edit by category/country/year yet** — though the filter box's
-  "Apply to filtered" control covers a lot of the same ground already,
-  since it works against any text in the table, not just a fixed field.
 
-All of the above are designed for, in `planner_io.py`'s data model — they
-just don't have UI yet.
+
+
+
+## TODOS
+* implement the optimal, MILP-based solver
