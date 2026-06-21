@@ -278,24 +278,45 @@ def run_plan(
     }
 
 
-def _normalize_title_for_matching(title: str) -> str:
-    """Uppercases, strips a leading "CONF. " prefix (the official PDF
+def _normalize_title_minimal(title: str) -> str:
+    """Uppercases, strips a leading \"CONF. \" prefix (the official PDF
     prefixes conference/talk entries this way; our own scraped catalog
-    doesn't), strips a leading ceremony prefix (the official PDF
-    combines the ceremony and the film into one block, e.g. "OPENING
-    CEREMONY + NIGHTBORN"; our own catalog splits this into two
-    separate, independently-pickable entries -- "Cérémonie + Nightborn"
-    and plain "Nightborn" -- see extract_programme_as_csv.py's ceremony-
-    split logic -- so BOTH of our split entries need to normalize down
-    to just the plain film title to match the PDF's single combined
-    block), and strips trailing ellipsis/punctuation -- normalizing both
-    sides enough that an exact-or-prefix comparison (see _titles_match())
-    can handle the official PDF's occasional mid-phrase truncation (e.g.
-    the chart shows "ALICE AU PAYS…" for the full title "Alice au pays
-    des merveilles")."""
+    doesn't), and strips trailing ellipsis/punctuation. Used for the
+    EXACT-match check in match_schedule_to_pdf_layout() -- deliberately
+    does NOT strip ceremony prefixes (see _normalize_title_full() for
+    that), since doing so here would make a ceremony's combined block
+    (e.g. "CLOSING CEREMONY + COLONY") look identical to a genuinely
+    separate, standalone box with the plain title ("COLONY") -- which
+    caused a real bug: matching the PLAIN "Colony" schedule entry
+    against the CEREMONY's position instead of Colony's own standalone
+    box, even though both exist as distinct boxes on the same day.
+    """
     text = title.strip().upper().rstrip(".\u2026 ")
     if text.startswith("CONF. "):
         text = text[len("CONF. ") :]
+    return text
+
+
+def _normalize_title_full(title: str) -> str:
+    """_normalize_title_minimal(), ALSO stripping a leading ceremony
+    prefix (the official PDF combines the ceremony and the film into one
+    block, e.g. "OPENING CEREMONY + NIGHTBORN"; our own catalog splits
+    this into two separate, independently-pickable entries --
+    "Cérémonie + Nightborn" and plain "Nightborn" -- see
+    extract_programme_as_csv.py's ceremony-split logic -- so BOTH of our
+    split entries need to normalize down to just the plain film title to
+    match the PDF's single combined block).
+
+    Used ONLY as a FALLBACK, prefix-tolerant comparison (see
+    _titles_match()) -- when there's a more specific, exact match
+    available (via _normalize_title_minimal()), that one is preferred;
+    this broader normalization is only reached when no exact match
+    exists at all (e.g. the ceremony's OWN combined block is the only
+    thing on the chart for that screening, with no separate standalone
+    box -- which is exactly the case for an OPENING ceremony, where
+    there's no second standalone screening that day).
+    """
+    text = _normalize_title_minimal(title)
     for ceremony_prefix in ("OPENING CEREMONY + ", "CLOSING CEREMONY + ", "CÉRÉMONIE + "):
         if text.startswith(ceremony_prefix):
             text = text[len(ceremony_prefix) :]
@@ -306,7 +327,7 @@ def _normalize_title_for_matching(title: str) -> str:
 def _titles_match(normalized_schedule_title: str, normalized_pdf_title: str) -> bool:
     """True if either normalized title is a prefix of the other -- the
     official PDF truncates some longer titles with an ellipsis, and
-    after _normalize_title_for_matching() strips that ellipsis, what's
+    after _normalize_title_full() strips that ellipsis, what's
     left is a genuine PREFIX of the real, full title (verified directly
     against the real PDF: "ALICE AU PAYS" is a clean prefix of "ALICE AU
     PAYS DES MERVEILLES", not a different wording or abbreviation)."""
@@ -324,9 +345,9 @@ def match_schedule_to_pdf_layout(schedule: list[dict]) -> dict:
     produced by the standalone extract_pdf_layout.py script -- run that
     script again, locally, whenever the official PDF changes).
 
-    Matching key: (normalized title, date) -- see
-    _normalize_title_for_matching() for why this isn't exact string
-    equality, and extract_pdf_layout.py's module docstring for why no
+    Matching key: (normalized title, date), preferring an exact match
+    over a prefix-tolerant one -- see _normalize_title_minimal()/
+    _normalize_title_full() for why there are two normalization levels, and extract_pdf_layout.py's module docstring for why no
     further disambiguation (e.g. by venue) is needed: checked directly
     against the real PDF, no title repeats within the same day anywhere
     in the document.
@@ -351,16 +372,38 @@ def match_schedule_to_pdf_layout(schedule: list[dict]) -> dict:
     matched = []
     unmatched_titles = []
     for entry in schedule:
-        normalized_schedule_title = _normalize_title_for_matching(entry["title"])
         candidates = layout_by_date.get(entry["date"], [])
+
+        # Prefer an EXACT match (minimal normalization only -- case and
+        # stray punctuation, NOT ceremony-prefix-stripped) over a PREFIX
+        # match. Without this, a ceremony's combined block (e.g.
+        # "CLOSING CEREMONY + COLONY", which the FULL normalization
+        # strips down to "COLONY") and a genuinely separate, standalone
+        # "COLONY" box on the same day would be treated as equally good
+        # matches -- meaning whichever happened to come first in the
+        # list would silently win, even when picking the PLAIN movie
+        # (not its ceremony half) should land on the standalone box
+        # specifically. Caught directly: this was marking the
+        # ceremony's position for both of Colony's split entries.
+        minimal_schedule_title = _normalize_title_minimal(entry["title"])
         layout_entry = next(
             (
                 c
                 for c in candidates
-                if _titles_match(normalized_schedule_title, _normalize_title_for_matching(c["text"]))
+                if minimal_schedule_title == _normalize_title_minimal(c["text"])
             ),
             None,
         )
+        if layout_entry is None:
+            full_schedule_title = _normalize_title_full(entry["title"])
+            layout_entry = next(
+                (
+                    c
+                    for c in candidates
+                    if _titles_match(full_schedule_title, _normalize_title_full(c["text"]))
+                ),
+                None,
+            )
         if layout_entry is None:
             unmatched_titles.append(entry["title"])
             continue

@@ -494,6 +494,14 @@ main {
   justify-content: flex-end;
 }
 
+.pdf-highlight-disclaimer {
+  margin: 0.5rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: rgba(20, 21, 26, 0.55);
+  max-width: 48rem;
+}
+
 .pdf-export-feedback {
   min-height: 1.2rem;
   margin: 0.5rem 0 1rem;

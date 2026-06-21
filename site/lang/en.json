@@ -71,6 +71,7 @@
   "download_schedule_csv": "Download schedule as CSV",
   "download_schedule_pdf": "Download schedule as PDF",
   "highlight_official_pdf": "Mark picked movies on official planning",
+  "pdf_highlight_disclaimer": "Heads up: matching picked movies onto the official planning isn't perfect — a handful of titles (mostly workshops, conferences, and similar non-film entries) can't always be found automatically.",
   "pdf_export_loading": "Loading PDF tools (first time only)…",
   "pdf_export_building": "Building your PDF…",
   "pdf_export_error": "Couldn't build the PDF. Check the console for details.",
