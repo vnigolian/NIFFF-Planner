@@ -172,19 +172,15 @@ def run_plan(
 
     # The exponential objective internally clamps any priority above
     # EXPONENTIAL_PRIORITY_CAP -- surface that as an explicit message
-    # rather than silently changing behavior with no explanation.
-    capped_priority_warning = None
+    # rather than silently changing behavior with no explanation. The
+    # actual user-facing TEXT is built in JS (script.js's t() helper),
+    # since this module has no notion of the current UI language -- only
+    # the plain count is returned here.
+    n_capped_priorities = 0
     if objective == "exponential":
-        n_capped = sum(
+        n_capped_priorities = sum(
             1 for p in clean_priorities.values() if p > EXPONENTIAL_PRIORITY_CAP
         )
-        if n_capped > 0:
-            capped_priority_warning = (
-                f"{n_capped} movie(s) have a priority above {EXPONENTIAL_PRIORITY_CAP}; "
-                f"for the exponential objective, priorities above {EXPONENTIAL_PRIORITY_CAP} "
-                f"are treated as exactly {EXPONENTIAL_PRIORITY_CAP} (this doesn't change the "
-                f"priority value itself, just how the exponential objective weighs it)."
-            )
 
     import time
 
@@ -205,7 +201,8 @@ def run_plan(
     return {
         "algorithm_used": algorithm,
         "objective_used": objective,
-        "capped_priority_warning": capped_priority_warning,
+        "n_capped_priorities": n_capped_priorities,
+        "exponential_priority_cap": EXPONENTIAL_PRIORITY_CAP,
         "n_simulations_used": n_simulations if algorithm == "simulations" else None,
         "simulation_stats": result.simulation_stats,
         "elapsed_seconds": round(elapsed_seconds, 2),

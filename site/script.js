@@ -35,10 +35,82 @@ const downloadScheduleButton = document.getElementById("download-schedule");
 const warningsBlock = document.getElementById("warnings-block");
 const scheduleList = document.getElementById("schedule-list");
 const discardedList = document.getElementById("discarded-list");
+const languageSelect = document.getElementById("language-select");
 
 let pyodide = null;
 let movies = []; // [{title, categories, country, year, length, premiere, screenings}]
 let lastScheduleResult = []; // populated after a successful run, used for the download button
+let lastRenderedResult = null; // the full result object, used to re-render on language switch
+
+/* ------------------------------------------------------------- i18n --- */
+/* Translations live in lang/<code>.json -- one flat key->string map per
+ * language, with {placeholder} substitution for dynamic values. Adding a
+ * new language: drop a new lang/<code>.json file (copy lang/en.json as a
+ * starting point) AND add a matching <option> to #language-select in
+ * index.html -- a static site with no build step can't discover files on
+ * its own, so this one extra step is unavoidable, but nothing else needs
+ * to change.
+ */
+
+const LANGUAGE_STORAGE_KEY = "nifff-planner-language";
+const DEFAULT_LANGUAGE = "en";
+
+let currentTranslations = {};
+
+async function loadLanguage(code) {
+  const response = await fetch(`lang/${code}.json?v=${Date.now()}`, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`Couldn't load language file for "${code}" (HTTP ${response.status})`);
+  }
+  currentTranslations = await response.json();
+}
+
+function t(key, substitutions) {
+  let text = currentTranslations[key];
+  if (text == null) {
+    console.warn(`Missing translation for key "${key}"`);
+    return key;
+  }
+  if (substitutions) {
+    for (const [name, value] of Object.entries(substitutions)) {
+      text = text.replace(new RegExp(`\\{${name}\\}`, "g"), value);
+    }
+  }
+  return text;
+}
+
+function applyStaticTranslations() {
+  document.title = t("page_title");
+
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+    el.placeholder = t(el.dataset.i18nPlaceholder);
+  });
+  document.querySelectorAll("[data-i18n-aria-label]").forEach((el) => {
+    el.setAttribute("aria-label", t(el.dataset.i18nAriaLabel));
+  });
+}
+
+async function setLanguage(code) {
+  await loadLanguage(code);
+  localStorage.setItem(LANGUAGE_STORAGE_KEY, code);
+  applyStaticTranslations();
+
+  // Re-render anything currently on screen that has its own dynamic text,
+  // without re-fetching movies.csv or re-booting Pyodide.
+  if (selectedCount.textContent) {
+    updateSelectedCount();
+  }
+  if (!resultsSection.hidden && lastRenderedResult != null) {
+    renderResult(lastRenderedResult);
+  }
+}
+
+function getStoredLanguage() {
+  return localStorage.getItem(LANGUAGE_STORAGE_KEY) || DEFAULT_LANGUAGE;
+}
 
 function setStatus(text, percent) {
   statusLine.textContent = text;
@@ -60,18 +132,18 @@ function renderAvailabilityDays(festivalDays) {
         <span class="availability-day__date">${day.date}</span>
         <label class="availability-day__checkbox-label">
           <input type="checkbox" checked data-available-checkbox />
-          available
+          <span data-i18n="availability_available_label">${t("availability_available_label")}</span>
         </label>
       </div>
       <div class="availability-day__times">
-        <label for="begin-${day.date}">From</label>
+        <label for="begin-${day.date}" data-i18n="availability_from_label">${t("availability_from_label")}</label>
         <input
           type="time"
           id="begin-${day.date}"
           value="${day.default_begin}"
           data-begin-input
         />
-        <label for="end-${day.date}">To</label>
+        <label for="end-${day.date}" data-i18n="availability_to_label">${t("availability_to_label")}</label>
         <input
           type="time"
           id="end-${day.date}"
@@ -136,7 +208,7 @@ function updateSelectedCount() {
       selected += 1;
     }
   });
-  selectedCount.textContent = `You have selected ${selected}/${rows.length} movies.`;
+  selectedCount.textContent = t("selected_count", { selected, total: rows.length });
 }
 
 function csvEscape(value) {
@@ -245,7 +317,7 @@ function applyUploadedPriorities(file) {
     try {
       const rows = parseCsv(String(reader.result));
       if (rows.length === 0) {
-        priorityFileFeedback.textContent = "That file looks empty.";
+        priorityFileFeedback.textContent = t("upload_priorities_empty");
         return;
       }
 
@@ -253,7 +325,7 @@ function applyUploadedPriorities(file) {
       const titleIdx = header.indexOf("title");
       const priorityIdx = header.indexOf("priority");
       if (titleIdx === -1 || priorityIdx === -1) {
-        priorityFileFeedback.textContent = 'Expected a "Title,Priority" CSV \u2014 columns not found.';
+        priorityFileFeedback.textContent = t("upload_priorities_bad_columns");
         return;
       }
 
@@ -277,11 +349,11 @@ function applyUploadedPriorities(file) {
       const unmatched = priorityByTitle.size - matched;
       priorityFileFeedback.textContent =
         unmatched > 0
-          ? `Applied ${matched} priorities (${unmatched} title(s) in the file weren't found in this year's list).`
-          : `Applied ${matched} priorities.`;
+          ? t("upload_priorities_applied_with_unmatched", { matched, unmatched })
+          : t("upload_priorities_applied", { matched });
     } catch (err) {
       console.error(err);
-      priorityFileFeedback.textContent = "Couldn't read that file. Check the console for details.";
+      priorityFileFeedback.textContent = t("upload_priorities_error");
     }
   };
   reader.readAsText(file);
@@ -331,7 +403,7 @@ function renderMoviesTable(movieList) {
             step="1"
             value="0"
             inputmode="numeric"
-            aria-label="Priority for ${movie.title}"
+            aria-label="${t("priority_input_aria_label", { title: movie.title })}"
             data-priority-input
           />
         </span>
@@ -391,10 +463,17 @@ function applyBulkPriority() {
   });
 
   const query = movieFilterInput.value.trim();
-  const matchDescription = query ? `matching "${query}"` : "(no filter active)";
-  const skippedNote = skippedCount > 0 ? `, left ${skippedCount} already-set movie(s) untouched` : "";
-  bulkPriorityFeedback.textContent =
-    `Set priority ${safeValue} on ${updatedCount} movie(s) ${matchDescription}${skippedNote}.`;
+  const matchDescription = query
+    ? t("bulk_priority_match_filtered", { query })
+    : t("bulk_priority_match_all");
+  const skippedNote =
+    skippedCount > 0 ? t("bulk_priority_skipped_note", { count: skippedCount }) : "";
+  bulkPriorityFeedback.textContent = t("bulk_priority_feedback", {
+    value: safeValue,
+    updated: updatedCount,
+    match_description: matchDescription,
+    skipped_note: skippedNote,
+  });
 }
 
 function collectPriorities() {
@@ -417,12 +496,17 @@ function renderWarnings(warnings) {
   const items = warnings
     .map(
       (w) =>
-        `<li>${w.first_title} (${w.first_time}) &rarr; ${w.second_title} (${w.second_time}) &mdash; under 5 minutes to get there.</li>`
+        `<li>${t("warnings_item", {
+          first_title: w.first_title,
+          first_time: w.first_time,
+          second_title: w.second_title,
+          second_time: w.second_time,
+        })}</li>`
     )
     .join("");
 
   warningsBlock.innerHTML = `
-    <strong>Tight squeeze:</strong> these back-to-back picks leave you almost no time to move.
+    <strong>${t("warnings_heading")}</strong> ${t("warnings_note")}
     <ul>${items}</ul>
   `;
   warningsBlock.hidden = false;
@@ -472,7 +556,7 @@ function renderSchedule(schedule) {
   scheduleList.innerHTML = "";
 
   if (schedule.length === 0) {
-    scheduleList.innerHTML = `<p class="subsection-note">Nothing scheduled yet &mdash; set a few priorities above and build again.</p>`;
+    scheduleList.innerHTML = `<p class="subsection-note">${t("schedule_empty")}</p>`;
     return;
   }
 
@@ -516,7 +600,7 @@ function renderSchedule(schedule) {
           <div class="ticket-item__title">${entry.title}<span class="ticket-item__category">${entry.categories || ""}</span></div>
           <div class="ticket-item__cinema">${entry.cinema}</div>
         </div>
-        <div class="ticket-item__priority">priority ${entry.priority}</div>
+        <div class="ticket-item__priority">${t("discarded_priority", { priority: entry.priority })}</div>
       `;
 
       // Break time before the NEXT movie, shown at the end of THIS one --
@@ -533,7 +617,7 @@ function renderSchedule(schedule) {
         if (breakMinutes <= 5) {
           breakRow.classList.add("ticket-item__break--tight");
         }
-        breakRow.textContent = `Break time before next movie: ${formatBreakDuration(breakMinutes)}`;
+        breakRow.textContent = t("break_time_label", { duration: formatBreakDuration(breakMinutes) });
         li.appendChild(breakRow);
       }
 
@@ -549,20 +633,27 @@ function formatConflictReason(conflict) {
   if (conflict.blocking == null) {
     // Pyodide converts Python None to JS `undefined` (not `null`) by
     // default, so this loose check intentionally catches both.
-    return `<li class="reason-unavailable">${conflict.date} ${conflict.time} &mdash; not available</li>`;
+    return `<li class="reason-unavailable">${t("discarded_reason_unavailable", {
+      date: conflict.date,
+      time: conflict.time,
+    })}</li>`;
   }
   if (conflict.blocking.length === 0) {
-    return `<li>${conflict.date} ${conflict.time} &mdash; free, but outscored by the rest of the schedule</li>`;
+    return `<li>${t("discarded_reason_outscored", { date: conflict.date, time: conflict.time })}</li>`;
   }
   const blockers = conflict.blocking.map((b) => `${b.title} (${b.time})`).join(", ");
-  return `<li>${conflict.date} ${conflict.time} &mdash; clashes with ${blockers}</li>`;
+  return `<li>${t("discarded_reason_blocked", {
+    date: conflict.date,
+    time: conflict.time,
+    blockers,
+  })}</li>`;
 }
 
 function renderDiscarded(discarded) {
   discardedList.innerHTML = "";
 
   if (discarded.length === 0) {
-    discardedList.innerHTML = `<li class="discard-item">Nothing left behind &mdash; everything you ranked made it in.</li>`;
+    discardedList.innerHTML = `<li class="discard-item">${t("discarded_empty")}</li>`;
     return;
   }
 
@@ -576,7 +667,7 @@ function renderDiscarded(discarded) {
           <span class="discard-item__title">${movie.title}</span>
           <span class="discard-item__category">${movie.categories || ""}</span>
         </span>
-        <span class="discard-item__priority">priority ${movie.priority}</span>
+        <span class="discard-item__priority">${t("discarded_priority", { priority: movie.priority })}</span>
       </div>
       <ul class="discard-item__reasons">${reasons}</ul>
     `;
@@ -586,6 +677,7 @@ function renderDiscarded(discarded) {
 
 function renderResult(result) {
   lastScheduleResult = result.schedule;
+  lastRenderedResult = result;
   downloadScheduleButton.disabled = result.schedule.length === 0;
 
   const successRate =
@@ -593,28 +685,41 @@ function renderResult(result) {
       ? Math.round((100 * result.n_movies_selected) / result.n_movies_with_priority)
       : 0;
 
-  let summaryText =
-    `Total priority: ${result.total_priority} \u00b7 ` +
-    `${result.n_movies_selected}/${result.n_movies_with_priority} ranked movies scheduled (${successRate}%) \u00b7 ` +
-    `${result.elapsed_seconds}s`;
+  let summaryText = t("results_summary", {
+    total: result.total_priority,
+    selected: result.n_movies_selected,
+    total_with_priority: result.n_movies_with_priority,
+    rate: successRate,
+    elapsed: result.elapsed_seconds,
+  });
 
   const stats = result.simulation_stats;
   if (stats != null && stats.n > 1) {
     const mean = Math.round(stats.mean * 10) / 10;
-    summaryText += ` \u00b7 across ${stats.n} simulations \u2014 min ${stats.min}, mean ${mean}, max ${stats.max}`;
+    summaryText += t("results_summary_with_stats", {
+      n: stats.n,
+      min: stats.min,
+      mean,
+      max: stats.max,
+    });
     if (result.objective_used && result.objective_used !== "linear") {
       // With a non-linear objective, the schedule that WON wasn't
       // necessarily the one with the highest linear sum -- "Total
       // priority" above can legitimately be lower than "max" here.
-      summaryText += ` (picked by the ${result.objective_used} objective, not necessarily the highest of these)`;
+      const objectiveLabel = t(`objective_${result.objective_used}`);
+      summaryText += t("results_summary_objective_note", { objective: objectiveLabel });
     }
   }
 
   resultsSummary.textContent = summaryText;
 
-  cappedPriorityWarning.hidden = result.capped_priority_warning == null;
-  if (result.capped_priority_warning != null) {
-    cappedPriorityWarning.textContent = result.capped_priority_warning;
+  const hasCappedPriorities = result.n_capped_priorities > 0;
+  cappedPriorityWarning.hidden = !hasCappedPriorities;
+  if (hasCappedPriorities) {
+    cappedPriorityWarning.textContent = t("capped_priority_warning", {
+      count: result.n_capped_priorities,
+      cap: result.exponential_priority_cap,
+    });
   }
 
   renderWarnings(result.tight_transition_warnings);
@@ -681,7 +786,7 @@ async function runPlan() {
     renderResult(result);
   } catch (err) {
     console.error(err);
-    resultsSummary.textContent = "Something went wrong while building the schedule. Check the console for details.";
+    resultsSummary.textContent = t("error_generic");
     resultsSection.hidden = false;
   } finally {
     runButton.disabled = false;
@@ -725,10 +830,13 @@ function syncTableHeightToAvailabilityPanel() {
 }
 
 async function boot() {
-  setStatus("Booting simulator\u2026", 8);
+  await setLanguage(getStoredLanguage());
+  languageSelect.value = getStoredLanguage();
+
+  setStatus(t("status_booting"), 8);
   pyodide = await loadPyodide();
 
-  setStatus("Loading the planner\u2026", 40);
+  setStatus(t("status_loading_planner"), 40);
 
   // Fetch the Python source files and write them into Pyodide's virtual
   // filesystem so they can be imported like normal local modules.
@@ -747,7 +855,7 @@ async function boot() {
     pyodide.FS.writeFile(filename, source);
   }
 
-  setStatus("Reading the programme\u2026", 70);
+  setStatus(t("status_reading_programme"), 70);
   await pyodide.runPythonAsync(`
 import app
 movies_for_js = app.load_movies()
@@ -763,7 +871,7 @@ run_plan = app.run_plan
   const festivalDays = festivalDaysPy.toJs({ dict_converter: Object.fromEntries });
   festivalDaysPy.destroy();
 
-  setStatus(`Loaded ${movies.length} movies. Set your priorities below.`, 100);
+  setStatus(t("status_loaded", { count: movies.length }), 100);
   statusSection.hidden = true;
   moviesSection.hidden = false;
 
@@ -788,6 +896,10 @@ nSimulationsInput.addEventListener("change", () => {
   }
 });
 
+languageSelect.addEventListener("change", () => {
+  setLanguage(languageSelect.value).catch((err) => console.error(err));
+});
+
 downloadPrioritiesButton.addEventListener("click", downloadPriorities);
 uploadPrioritiesTriggerButton.addEventListener("click", () => uploadPrioritiesInput.click());
 uploadPrioritiesInput.addEventListener("change", () => {
@@ -801,5 +913,11 @@ downloadScheduleButton.addEventListener("click", downloadSchedule);
 
 boot().catch((err) => {
   console.error(err);
-  setStatus("Couldn't load the planner. Check the console for details.");
+  // currentTranslations may not have loaded at all if THIS is what
+  // failed -- fall back to a hardcoded English string rather than risk
+  // t() itself throwing or silently returning a raw key here.
+  const message =
+    currentTranslations.status_load_failed ||
+    "Couldn't load the planner. Check the console for details.";
+  setStatus(message);
 });

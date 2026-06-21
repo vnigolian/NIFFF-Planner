@@ -65,6 +65,18 @@ site/              What GitHub Pages actually serves (see Deploying below)
   style.css        All styling
   script.js        Pyodide bootstrap + DOM rendering/event wiring (no
                     planning logic lives here -- see py/)
+  lang/
+    en.json        UI text, English (the reference translation)
+    fr.json        UI text, French
+    de.json        UI text, German (machine-translated, unreviewed --
+                    see "Translations" below)
+    it.json        UI text, Italian (machine-translated, unreviewed --
+                    see "Translations" below)
+    rm.json        UI text, Romansh (Rumantsch Grischun, the
+                    standardized supra-regional written form --
+                    machine-translated, unreviewed, and lower-confidence
+                    than the others since Romansh is a much smaller,
+                    less-resourced language)
 data/
   movies.csv       This year's scraped programme
 py/
@@ -72,17 +84,43 @@ py/
                     fetches movies.csv, exposes load_movies()/run_plan()/
                     get_festival_days() for script.js to call
   planner_core.py  Pure combinatorial solvers: solve() (fast, random,
-                   always-feasible but not optimal), solve_best_of_n()
-                   (runs solve() many times, keeps the best -- a cheap
-                   middle ground), and solve_optimal() (exact branch-and-
-                   bound, NP-hard problem so no runtime guarantee -- see
-                   its docstring)
+                    always-feasible but not optimal), solve_best_of_n()
+                    (runs solve() many times, keeps the best -- a cheap
+                    middle ground), and solve_optimal() (exact branch-and-
+                    bound, NP-hard problem so no runtime guarantee -- see
+                    its docstring)
   clique_bound.py  A tight, validated upper bound used by
-                   solve_optimal()'s pruning (per-day clique-aware
-                   bipartite matching)
+                    solve_optimal()'s pruning (per-day clique-aware
+                    bipartite matching)
   planner_io.py    Glue: CSV-shaped data <-> the solver's data model, time
-                   handling, the discarded-movies report
+                    handling, the discarded-movies report
 ```
+
+## Translations
+
+UI text lives in `site/lang/<code>.json` — one flat `key: "string"` map
+per language, with `{placeholder}` substitution for dynamic values (e.g.
+`"Loaded {count} movies."`). Movie data itself (titles, categories,
+country codes) is never translated — only the site's own UI chrome.
+
+**Editing an existing language**: open the `.json` file and edit the
+strings directly — it's plain text, no code involved. Keep the
+`{placeholder}` tokens exactly as they appear (same name, same curly
+braces) since those get replaced with real values at runtime; everything
+else is free text.
+
+**Adding a new language**: a static site with no build step can't
+discover files on its own, so this needs two small steps, not just
+dropping in a file:
+1. Copy `site/lang/en.json` to `site/lang/<code>.json` and translate its
+   values (keep every key name exactly as-is).
+2. Add a matching `<option value="<code>">Label</option>` to the
+   `#language-select` dropdown in `site/index.html`.
+
+**Known limitation**: the small `aria-label` on each movie row's
+priority input (screen-reader-only, not visible text) is set once when
+the row is first rendered and won't retroactively update if you switch
+languages mid-session — everything else on the page does update live.
 
 `site/`, `data/`, and `py/` are siblings under the repo root — `site/` is
 NOT self-contained; its `index.html` reaches `data/movies.csv` and

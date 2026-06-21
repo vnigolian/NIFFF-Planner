@@ -1,0 +1,95 @@
+{
+  "_meta": {
+    "code": "rm",
+    "label": "Rumantsch (automatic)",
+    "automatic": true
+  },
+
+  "page_title": "NIFFF Planner",
+  "header_eyebrow": "Utensil betg uffizial, fatg da in fan",
+  "header_tagline": "Classifitgescha tge che ti vuls vesair. Lascha far il rest al simulatur.",
+
+  "status_booting": "Il simulatur sa stgartavla…",
+  "status_loading_planner": "Chargiar il planisaziun…",
+  "status_reading_programme": "Leger il program…",
+  "status_loaded": "{count} films chargiads. Defini tias prioritads sutvart.",
+  "status_load_failed": "Impussibel da chargiar il planisaziun. Controllescha la console per detagls.",
+  "status_bar_aria_label": "Chargiar",
+
+  "availability_heading": "Cura has ti temp?",
+  "availability_note": "Mintga di è disponibel per standard. Deactivescha in di per exclud el dal tut — ils temps sutvart restan visibels, ma na vegnan simplamain betg duvrads.",
+  "availability_available_label": "disponibel",
+  "availability_from_label": "Dad",
+  "availability_to_label": "fin",
+
+  "selected_count": "Ti has tschernì {selected}/{total} films.",
+
+  "movie_filter_placeholder": "Filtrar tenor titel, categoria, pajais…",
+  "priority_input_aria_label": "Prioritad per {title}",
+
+  "bulk_priority_label": "Definir la prioritad per las lingias filtradas",
+  "bulk_priority_apply": "Applitgar als films filtrads",
+  "bulk_priority_overwrite_label": "surscriver prioritads gia definidas",
+  "bulk_priority_feedback": "Prioritad {value} applitgada a {updated} film(s) {match_description}{skipped_note}.",
+  "bulk_priority_match_filtered": "correspondent a «{query}»",
+  "bulk_priority_match_all": "(nagin filter activ)",
+  "bulk_priority_skipped_note": ", {count} film(s) gia definids laschads sco els eran",
+
+  "download_priorities": "Telechargiar sco CSV",
+  "upload_priorities_trigger": "Chargiar in CSV…",
+  "upload_priorities_empty": "Quest document para vid.",
+  "upload_priorities_bad_columns": "Spetgà in CSV cun las colonnas «Title,Priority» — colonnas betg chattadas.",
+  "upload_priorities_applied": "{matched} prioritads applitgadas.",
+  "upload_priorities_applied_with_unmatched": "{matched} prioritads applitgadas ({unmatched} titel(s) dal document betg chattads en la glista da quest onn).",
+  "upload_priorities_error": "Impussibel da leger quest document. Controllescha la console per detagls.",
+
+  "min_break_label": "Pausa minimala tranter films (min):",
+  "build_button": "Crear mes program",
+  "build_button_computing": "Calculaziun en cors…",
+
+  "expert_mode_summary": "Modus expert",
+  "objective_label": "Objectiv:",
+  "objective_linear": "Linear",
+  "objective_quadratic": "Quadratic",
+  "objective_exponential": "Exponenzial",
+  "objective_note": "Linear addescha simplamain las prioritads. Quadratic ed Exponenzial favorisan ils films cun la prioritad la pli auta enstagl bler films cun prioritads pli bassas — Exponenzial dad ina moda multifaditgamain pli forta che Quadratic. En mintga cas, il total/min/media/max mussads sutvart èn adina sumas Linearas, era sche in auter objectiv ha tschernì il program.",
+  "n_simulations_label": "Simulaziuns da exequir (il meglier resultat vegn mantegnì):",
+
+  "capped_priority_warning": "{count} film(s) han ina prioritad pli auta che {cap}; per l'objectiv exponenzial vegnan prioritads pli autas che {cap} tractadas sco exact {cap} (quai na mida betg il valur da la prioritad sez, mabain mo co l'objectiv exponenzial al pesa).",
+
+  "table_header_priority": "Prioritad",
+  "table_header_title": "Titel",
+  "table_header_category": "Categoria",
+  "table_header_country": "Pajais",
+  "table_header_year": "Onn",
+  "table_header_screenings": "Represchentaziuns",
+
+  "results_heading": "Tes program",
+  "results_summary": "Prioritad totala: {total} · {selected}/{total_with_priority} films classifitgads en il program ({rate}%) · {elapsed}s",
+  "results_summary_with_stats": " · sur {n} simulaziuns — min {min}, media {mean}, max {max}",
+  "results_summary_objective_note": " (tschernì da l'objectiv {objective}, betg necessariamain il pli aut da quels)",
+  "download_schedule": "Telechargiar ils films tschernids",
+
+  "warnings_heading": "Stretg:",
+  "warnings_note": "quels films suandants in suenter l'auter na ta laschan quasi nagin temp per ta spustar.",
+  "warnings_item": "{first_title} ({first_time}) → {second_title} ({second_time}) — main che 5 minutas per arrivar là.",
+
+  "schedule_heading": "Fixads en il program",
+  "schedule_empty": "Anc nagut en il program — defini intgins valurs da prioritad sur e crea il program danovamain.",
+  "break_time_label": "Pausa avant il proxim film: {duration}",
+
+  "discarded_heading": "Betg tschernids",
+  "discarded_note": "Tenor prioritad decrescenta. Augmenta ina prioritad e crea il program danovamain per empruvar da la salvar.",
+  "discarded_empty": "Nagut è stà exclus — tut quai che ti has classifitgà è vegnì integrà.",
+  "discarded_priority": "prioritad {priority}",
+  "discarded_reason_unavailable": "{date} {time} — betg disponibel",
+  "discarded_reason_outscored": "{date} {time} — libra, ma surpassada dal rest dal program",
+  "discarded_reason_blocked": "{date} {time} — en conflict cun {blockers}",
+
+  "error_generic": "Ina errur è succedida durant la creaziun dal program. Controllescha la console per detagls.",
+
+  "footer_before_link": "Funcziunescha entiramain en tes navigatur via",
+  "footer_after_link": "Nagut da quai che ti endatas banduna tes computer.",
+
+  "language_label": "Lingua:"
+}

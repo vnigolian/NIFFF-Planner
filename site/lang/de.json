@@ -1,0 +1,95 @@
+{
+  "_meta": {
+    "code": "de",
+    "label": "Deutsch (automatisch)",
+    "automatic": true
+  },
+
+  "page_title": "NIFFF Planner",
+  "header_eyebrow": "Inoffizielles Fan-Tool",
+  "header_tagline": "Bewerte, was du sehen willst. Lass den Simulator den Rest erledigen.",
+
+  "status_booting": "Simulator wird gestartet…",
+  "status_loading_planner": "Planer wird geladen…",
+  "status_reading_programme": "Programm wird gelesen…",
+  "status_loaded": "{count} Filme geladen. Lege unten deine Prioritäten fest.",
+  "status_load_failed": "Der Planer konnte nicht geladen werden. Details siehe Konsole.",
+  "status_bar_aria_label": "Wird geladen",
+
+  "availability_heading": "Wann hast du Zeit?",
+  "availability_note": "Jeder Tag ist standardmäßig komplett verfügbar. Deaktiviere einen Tag, um ihn ganz auszuschließen — die Zeiten unten bleiben sichtbar, werden aber einfach nicht verwendet.",
+  "availability_available_label": "verfügbar",
+  "availability_from_label": "Von",
+  "availability_to_label": "Bis",
+
+  "selected_count": "Du hast {selected}/{total} Filme ausgewählt.",
+
+  "movie_filter_placeholder": "Nach Titel, Kategorie, Land filtern…",
+  "priority_input_aria_label": "Priorität für {title}",
+
+  "bulk_priority_label": "Priorität für gefilterte Zeilen setzen",
+  "bulk_priority_apply": "Auf gefilterte anwenden",
+  "bulk_priority_overwrite_label": "bereits gesetzte Prioritäten überschreiben",
+  "bulk_priority_feedback": "Priorität {value} auf {updated} Film(e) {match_description}{skipped_note} angewendet.",
+  "bulk_priority_match_filtered": "passend zu „{query}“",
+  "bulk_priority_match_all": "(kein Filter aktiv)",
+  "bulk_priority_skipped_note": ", {count} bereits gesetzte(s) Film(e) unverändert gelassen",
+
+  "download_priorities": "Als CSV herunterladen",
+  "upload_priorities_trigger": "CSV laden…",
+  "upload_priorities_empty": "Diese Datei scheint leer zu sein.",
+  "upload_priorities_bad_columns": "Eine CSV-Datei mit den Spalten „Title,Priority“ wurde erwartet — Spalten nicht gefunden.",
+  "upload_priorities_applied": "{matched} Prioritäten angewendet.",
+  "upload_priorities_applied_with_unmatched": "{matched} Prioritäten angewendet ({unmatched} Titel aus der Datei wurden in der diesjährigen Liste nicht gefunden).",
+  "upload_priorities_error": "Diese Datei konnte nicht gelesen werden. Details siehe Konsole.",
+
+  "min_break_label": "Min. Pause zwischen Filmen (Min.):",
+  "build_button": "Meinen Zeitplan erstellen",
+  "build_button_computing": "Wird berechnet…",
+
+  "expert_mode_summary": "Expertenmodus",
+  "objective_label": "Zielfunktion:",
+  "objective_linear": "Linear",
+  "objective_quadratic": "Quadratisch",
+  "objective_exponential": "Exponentiell",
+  "objective_note": "Linear addiert einfach die Prioritäten. Quadratisch und Exponentiell bevorzugen deine einzelnen höchstpriorisierten Filme gegenüber einer größeren Menge niedriger priorisierter Filme — Exponentiell deutlich stärker als Quadratisch. In jedem Fall sind die unten angezeigten Werte für Summe/Min/Mittel/Max immer einfache (lineare) Summen, auch wenn eine andere Zielfunktion den Zeitplan ausgewählt hat.",
+  "n_simulations_label": "Anzahl Simulationen (bestes Ergebnis wird behalten):",
+
+  "capped_priority_warning": "{count} Film(e) haben eine Priorität über {cap}; für die exponentielle Zielfunktion werden Prioritäten über {cap} als genau {cap} behandelt (dies ändert nicht den Prioritätswert selbst, sondern nur, wie die exponentielle Zielfunktion ihn gewichtet).",
+
+  "table_header_priority": "Priorität",
+  "table_header_title": "Titel",
+  "table_header_category": "Kategorie",
+  "table_header_country": "Land",
+  "table_header_year": "Jahr",
+  "table_header_screenings": "Vorstellungen",
+
+  "results_heading": "Dein Zeitplan",
+  "results_summary": "Gesamtpriorität: {total} · {selected}/{total_with_priority} bewertete Filme eingeplant ({rate} %) · {elapsed}s",
+  "results_summary_with_stats": " · über {n} Simulationen — Min {min}, Mittel {mean}, Max {max}",
+  "results_summary_objective_note": " (ausgewählt durch die Zielfunktion {objective}, nicht notwendigerweise die höchste davon)",
+  "download_schedule": "Ausgewählte Filme herunterladen",
+
+  "warnings_heading": "Knapp:",
+  "warnings_note": "diese unmittelbar aufeinanderfolgenden Filme lassen dir kaum Zeit, dich zu bewegen.",
+  "warnings_item": "{first_title} ({first_time}) → {second_title} ({second_time}) — weniger als 5 Minuten, um dorthin zu gelangen.",
+
+  "schedule_heading": "Eingeplant",
+  "schedule_empty": "Noch nichts eingeplant — lege oben ein paar Prioritäten fest und erstelle den Zeitplan erneut.",
+  "break_time_label": "Pause vor dem nächsten Film: {duration}",
+
+  "discarded_heading": "Nicht berücksichtigt",
+  "discarded_note": "Nach Priorität absteigend sortiert. Erhöhe eine Priorität und erstelle den Zeitplan erneut, um sie zu retten.",
+  "discarded_empty": "Nichts wurde aussortiert — alles, was du bewertet hast, hat es geschafft.",
+  "discarded_priority": "Priorität {priority}",
+  "discarded_reason_unavailable": "{date} {time} — nicht verfügbar",
+  "discarded_reason_outscored": "{date} {time} — frei, aber vom Rest des Zeitplans übertroffen",
+  "discarded_reason_blocked": "{date} {time} — kollidiert mit {blockers}",
+
+  "error_generic": "Beim Erstellen des Zeitplans ist ein Fehler aufgetreten. Details siehe Konsole.",
+
+  "footer_before_link": "Läuft vollständig in deinem Browser über",
+  "footer_after_link": "Nichts, was du eingibst, verlässt deinen Computer.",
+
+  "language_label": "Sprache:"
+}

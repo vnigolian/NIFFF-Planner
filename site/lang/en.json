@@ -1,0 +1,95 @@
+{
+  "_meta": {
+    "code": "en",
+    "label": "English",
+    "automatic": false
+  },
+
+  "page_title": "NIFFF Planner",
+  "header_eyebrow": "Unofficial · fan-made schedule tool",
+  "header_tagline": "Rank what you want to see. Let the simulator run itself.",
+
+  "status_booting": "Booting simulator…",
+  "status_loading_planner": "Loading the planner…",
+  "status_reading_programme": "Reading the programme…",
+  "status_loaded": "Loaded {count} movies. Set your priorities below.",
+  "status_load_failed": "Couldn't load the planner. Check the console for details.",
+  "status_bar_aria_label": "Loading",
+
+  "availability_heading": "When can you go?",
+  "availability_note": "Every day defaults to fully available. Uncheck a day to skip it entirely — its times below stay as shown, they just won't be used.",
+  "availability_available_label": "available",
+  "availability_from_label": "From",
+  "availability_to_label": "To",
+
+  "selected_count": "You have selected {selected}/{total} movies.",
+
+  "movie_filter_placeholder": "Filter by title, category, country…",
+  "priority_input_aria_label": "Priority for {title}",
+
+  "bulk_priority_label": "Set priority for filtered rows",
+  "bulk_priority_apply": "Apply to filtered",
+  "bulk_priority_overwrite_label": "overwrite already-set priorities",
+  "bulk_priority_feedback": "Set priority {value} on {updated} movie(s) {match_description}{skipped_note}.",
+  "bulk_priority_match_filtered": "matching \"{query}\"",
+  "bulk_priority_match_all": "(no filter active)",
+  "bulk_priority_skipped_note": ", left {count} already-set movie(s) untouched",
+
+  "download_priorities": "Download as CSV",
+  "upload_priorities_trigger": "Load from CSV…",
+  "upload_priorities_empty": "That file looks empty.",
+  "upload_priorities_bad_columns": "Expected a \"Title,Priority\" CSV — columns not found.",
+  "upload_priorities_applied": "Applied {matched} priorities.",
+  "upload_priorities_applied_with_unmatched": "Applied {matched} priorities ({unmatched} title(s) in the file weren't found in this year's list).",
+  "upload_priorities_error": "Couldn't read that file. Check the console for details.",
+
+  "min_break_label": "Min. break between movies (min):",
+  "build_button": "Build my schedule",
+  "build_button_computing": "Computing…",
+
+  "expert_mode_summary": "Expert mode",
+  "objective_label": "Objective:",
+  "objective_linear": "Linear",
+  "objective_quadratic": "Quadratic",
+  "objective_exponential": "Exponential",
+  "objective_note": "Linear just adds up priorities. Quadratic and Exponential favor landing your single highest-priority picks over a larger pile of lower-priority ones — Exponential much more aggressively than Quadratic. Either way, the total/min/mean/max shown below are always plain (Linear) sums, even when a different objective picked the schedule.",
+  "n_simulations_label": "Simulations to run (best result kept):",
+
+  "capped_priority_warning": "{count} movie(s) have a priority above {cap}; for the exponential objective, priorities above {cap} are treated as exactly {cap} (this doesn't change the priority value itself, just how the exponential objective weighs it).",
+
+  "table_header_priority": "Priority",
+  "table_header_title": "Title",
+  "table_header_category": "Category",
+  "table_header_country": "Country",
+  "table_header_year": "Year",
+  "table_header_screenings": "Screenings",
+
+  "results_heading": "Your schedule",
+  "results_summary": "Total priority: {total} · {selected}/{total_with_priority} ranked movies scheduled ({rate}%) · {elapsed}s",
+  "results_summary_with_stats": " · across {n} simulations — min {min}, mean {mean}, max {max}",
+  "results_summary_objective_note": " (picked by the {objective} objective, not necessarily the highest of these)",
+  "download_schedule": "Download picked movies",
+
+  "warnings_heading": "Tight squeeze:",
+  "warnings_note": "these back-to-back picks leave you almost no time to move.",
+  "warnings_item": "{first_title} ({first_time}) → {second_title} ({second_time}) — under 5 minutes to get there.",
+
+  "schedule_heading": "Locked in",
+  "schedule_empty": "Nothing scheduled yet — set a few priorities above and build again.",
+  "break_time_label": "Break time before next movie: {duration}",
+
+  "discarded_heading": "Left on the table",
+  "discarded_note": "Highest priority first. Bump a priority and rebuild to try to save it.",
+  "discarded_empty": "Nothing left behind — everything you ranked made it in.",
+  "discarded_priority": "priority {priority}",
+  "discarded_reason_unavailable": "{date} {time} — not available",
+  "discarded_reason_outscored": "{date} {time} — free, but outscored by the rest of the schedule",
+  "discarded_reason_blocked": "{date} {time} — clashes with {blockers}",
+
+  "error_generic": "Something went wrong while building the schedule. Check the console for details.",
+
+  "footer_before_link": "Runs entirely in your browser via",
+  "footer_after_link": "Nothing you enter leaves your machine.",
+
+  "language_label": "Language:"
+}

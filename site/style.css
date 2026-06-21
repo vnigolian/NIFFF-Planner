@@ -61,6 +61,35 @@ a {
   color: var(--accent-soft);
 }
 
+.site-header__top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.language-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: rgba(239, 231, 216, 0.7);
+}
+
+.language-picker__select {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--line-on-dark);
+  border-radius: 3px;
+  background: var(--ink-soft);
+  color: var(--paper-bright);
+  cursor: pointer;
+}
+
 .site-title {
   margin: 0;
   font-family: var(--font-display);

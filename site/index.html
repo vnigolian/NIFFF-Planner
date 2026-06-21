@@ -10,17 +10,29 @@
 
 <header class="site-header">
   <div class="site-header__inner">
-    <p class="eyebrow">Unofficial &middot; fan-made schedule tool</p>
+    <div class="site-header__top-row">
+      <p class="eyebrow" data-i18n="header_eyebrow">Unofficial &middot; fan-made schedule tool</p>
+      <span class="language-picker">
+        <label for="language-select" data-i18n="language_label">Language:</label>
+        <select id="language-select" class="language-picker__select">
+          <option value="en">English</option>
+          <option value="fr">French</option>
+          <option value="de">German (automatic)</option>
+          <option value="it">Italian (automatic)</option>
+          <option value="rm">Romansh (automatic)</option>
+        </select>
+      </span>
+    </div>
     <h1 class="site-title">NIFFF<span class="site-title__accent">PLANNER</span></h1>
-    <p class="site-tagline">Rank what you want to see. Let the simulator run itself.</p>
+    <p class="site-tagline" data-i18n="header_tagline">Rank what you want to see. Let the simulator run itself.</p>
   </div>
 </header>
 
 <main>
 
   <section id="status-section" class="panel panel--status">
-    <p id="status-line" class="status-line">Booting simulator&hellip;</p>
-    <div id="status-bar" class="status-bar" role="progressbar" aria-label="Loading">
+    <p id="status-line" class="status-line" data-i18n="status_booting">Booting simulator&hellip;</p>
+    <div id="status-bar" class="status-bar" role="progressbar" aria-label="Loading" data-i18n-aria-label="status_bar_aria_label">
       <div id="status-bar-fill" class="status-bar__fill"></div>
     </div>
   </section>
@@ -30,8 +42,8 @@
     <div class="movies-layout">
 
       <aside class="availability-panel">
-        <h3 class="subsection-title subsection-title--compact">When can you go?</h3>
-        <p class="subsection-note">
+        <h3 class="subsection-title subsection-title--compact" data-i18n="availability_heading">When can you go?</h3>
+        <p class="subsection-note" data-i18n="availability_note">
           Every day defaults to fully available. Uncheck a day to skip it
           entirely &mdash; its times below stay as shown, they just won't
           be used.
@@ -51,12 +63,13 @@
               id="movie-filter"
               class="text-input"
               placeholder="Filter by title, category, country&hellip;"
+              data-i18n-placeholder="movie_filter_placeholder"
               autocomplete="off"
             />
 
             <span class="bulk-priority">
               <span class="bulk-priority__main-row">
-                <label for="bulk-priority-value" class="bulk-priority__label">
+                <label for="bulk-priority-value" class="bulk-priority__label" data-i18n="bulk_priority_label">
                   Set priority for filtered rows
                 </label>
                 <input
@@ -68,23 +81,23 @@
                   value="5"
                   inputmode="numeric"
                 />
-                <button id="bulk-priority-apply" class="button button--secondary" type="button">
+                <button id="bulk-priority-apply" class="button button--secondary" type="button" data-i18n="bulk_priority_apply">
                   Apply to filtered
                 </button>
               </span>
               <label class="bulk-priority__overwrite-label">
                 <input type="checkbox" id="bulk-priority-overwrite" />
-                overwrite already-set priorities
+                <span data-i18n="bulk_priority_overwrite_label">overwrite already-set priorities</span>
               </label>
             </span>
 
             <p id="bulk-priority-feedback" class="bulk-priority__feedback bulk-priority__feedback--boxed" aria-live="polite"></p>
 
             <div class="priority-file-box">
-              <button id="download-priorities" class="button button--secondary" type="button">
+              <button id="download-priorities" class="button button--secondary" type="button" data-i18n="download_priorities">
                 Download as CSV
               </button>
-              <button id="upload-priorities-trigger" class="button button--secondary" type="button">
+              <button id="upload-priorities-trigger" class="button button--secondary" type="button" data-i18n="upload_priorities_trigger">
                 Load from CSV&hellip;
               </button>
               <input type="file" id="upload-priorities-input" accept=".csv" hidden />
@@ -94,7 +107,7 @@
 
           <div class="build-panel">
             <span class="build-panel__row">
-              <label for="min-break-input" class="algorithm-choice__label">
+              <label for="min-break-input" class="algorithm-choice__label" data-i18n="min_break_label">
                 Min. break between movies (min):
               </label>
               <input
@@ -108,30 +121,30 @@
               />
             </span>
 
-            <button id="run-button" class="button button--primary" type="button">
+            <button id="run-button" class="button button--primary" type="button" data-i18n="build_button">
               Build my schedule
             </button>
             <span id="run-spinner" class="run-spinner" hidden>
               <span class="run-spinner__icon" aria-hidden="true"></span>
-              Computing&hellip;
+              <span data-i18n="build_button_computing">Computing&hellip;</span>
             </span>
             <p id="capped-priority-warning" class="capped-priority-warning" hidden></p>
 
             <details class="expert-mode">
-              <summary class="expert-mode__summary">Expert mode</summary>
+              <summary class="expert-mode__summary" data-i18n="expert_mode_summary">Expert mode</summary>
 
               <span class="build-panel__row">
-                <label for="objective-select" class="algorithm-choice__label">
+                <label for="objective-select" class="algorithm-choice__label" data-i18n="objective_label">
                   Objective:
                 </label>
                 <select id="objective-select" class="algorithm-choice__select">
-                  <option value="linear" selected>Linear</option>
-                  <option value="quadratic">Quadratic</option>
-                  <option value="exponential">Exponential</option>
+                  <option value="linear" selected data-i18n="objective_linear">Linear</option>
+                  <option value="quadratic" data-i18n="objective_quadratic">Quadratic</option>
+                  <option value="exponential" data-i18n="objective_exponential">Exponential</option>
                 </select>
               </span>
 
-              <p class="algorithm-choice__note algorithm-choice__note--boxed">
+              <p class="algorithm-choice__note algorithm-choice__note--boxed" data-i18n="objective_note">
                 Linear just adds up priorities. Quadratic and Exponential favor
                 landing your single highest-priority picks over a larger pile
                 of lower-priority ones &mdash; Exponential much more
@@ -141,7 +154,7 @@
               </p>
 
               <span class="build-panel__row">
-                <label for="n-simulations-input" class="algorithm-choice__label">
+                <label for="n-simulations-input" class="algorithm-choice__label" data-i18n="n_simulations_label">
                   Simulations to run (best result kept):
                 </label>
                 <input
@@ -163,12 +176,12 @@
           <table id="movies-table" class="movies-table">
             <thead>
               <tr>
-                <th scope="col" class="col-priority">Priority</th>
-                <th scope="col" class="col-title">Title</th>
-                <th scope="col" class="col-category">Category</th>
-                <th scope="col" class="col-country">Country</th>
-                <th scope="col" class="col-year">Year</th>
-                <th scope="col" class="col-screenings">Screenings</th>
+                <th scope="col" class="col-priority" data-i18n="table_header_priority">Priority</th>
+                <th scope="col" class="col-title" data-i18n="table_header_title">Title</th>
+                <th scope="col" class="col-category" data-i18n="table_header_category">Category</th>
+                <th scope="col" class="col-country" data-i18n="table_header_country">Country</th>
+                <th scope="col" class="col-year" data-i18n="table_header_year">Year</th>
+                <th scope="col" class="col-screenings" data-i18n="table_header_screenings">Screenings</th>
               </tr>
             </thead>
             <tbody id="movies-tbody"></tbody>
@@ -182,21 +195,21 @@
   <section id="results-section" class="panel panel--results" hidden>
     <div class="panel-heading panel-heading--with-action">
       <div>
-        <h2>Your schedule</h2>
+        <h2 data-i18n="results_heading">Your schedule</h2>
         <p id="results-summary" class="panel-subtitle"></p>
       </div>
-      <button id="download-schedule" class="button button--secondary" type="button" disabled>
+      <button id="download-schedule" class="button button--secondary" type="button" disabled data-i18n="download_schedule">
         Download picked movies
       </button>
     </div>
 
     <div id="warnings-block" class="warnings-block" hidden></div>
 
-    <h3 class="subsection-title">Locked in</h3>
+    <h3 class="subsection-title" data-i18n="schedule_heading">Locked in</h3>
     <div id="schedule-list" class="schedule-days"></div>
 
-    <h3 class="subsection-title">Left on the table</h3>
-    <p class="subsection-note">Highest priority first. Bump a priority and rebuild to try to save it.</p>
+    <h3 class="subsection-title" data-i18n="discarded_heading">Left on the table</h3>
+    <p class="subsection-note" data-i18n="discarded_note">Highest priority first. Bump a priority and rebuild to try to save it.</p>
     <ol id="discarded-list" class="discard-list"></ol>
   </section>
 
@@ -204,9 +217,9 @@
 
 <footer class="site-footer">
   <p>
-    Runs entirely in your browser via
+    <span data-i18n="footer_before_link">Runs entirely in your browser via</span>
     <a href="https://pyodide.org" target="_blank" rel="noopener">Pyodide</a>.
-    Nothing you enter leaves your machine.
+    <span data-i18n="footer_after_link">Nothing you enter leaves your machine.</span>
   </p>
 </footer>
 

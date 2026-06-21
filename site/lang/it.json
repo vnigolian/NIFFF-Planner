@@ -1,0 +1,95 @@
+{
+  "_meta": {
+    "code": "it",
+    "label": "Italiano (automatico)",
+    "automatic": true
+  },
+
+  "page_title": "NIFFF Planner",
+  "header_eyebrow": "Strumento non ufficiale, creato da un fan",
+  "header_tagline": "Classifica ciò che vuoi vedere. Lascia che il simulatore faccia il resto.",
+
+  "status_booting": "Avvio del simulatore…",
+  "status_loading_planner": "Caricamento del pianificatore…",
+  "status_reading_programme": "Lettura del programma…",
+  "status_loaded": "{count} film caricati. Imposta le tue priorità qui sotto.",
+  "status_load_failed": "Impossibile caricare il pianificatore. Controlla la console per i dettagli.",
+  "status_bar_aria_label": "Caricamento",
+
+  "availability_heading": "Quando sei disponibile?",
+  "availability_note": "Ogni giorno è disponibile per impostazione predefinita. Deseleziona un giorno per escluderlo completamente — gli orari sotto restano visibili, semplicemente non verranno usati.",
+  "availability_available_label": "disponibile",
+  "availability_from_label": "Dalle",
+  "availability_to_label": "alle",
+
+  "selected_count": "Hai selezionato {selected}/{total} film.",
+
+  "movie_filter_placeholder": "Filtra per titolo, categoria, paese…",
+  "priority_input_aria_label": "Priorità per {title}",
+
+  "bulk_priority_label": "Imposta la priorità per le righe filtrate",
+  "bulk_priority_apply": "Applica ai film filtrati",
+  "bulk_priority_overwrite_label": "sovrascrivi le priorità già impostate",
+  "bulk_priority_feedback": "Priorità {value} applicata a {updated} film {match_description}{skipped_note}.",
+  "bulk_priority_match_filtered": "corrispondenti a \"{query}\"",
+  "bulk_priority_match_all": "(nessun filtro attivo)",
+  "bulk_priority_skipped_note": ", {count} film già impostati lasciati invariati",
+
+  "download_priorities": "Scarica come CSV",
+  "upload_priorities_trigger": "Carica da CSV…",
+  "upload_priorities_empty": "Questo file sembra vuoto.",
+  "upload_priorities_bad_columns": "Era previsto un CSV con le colonne \"Title,Priority\" — colonne non trovate.",
+  "upload_priorities_applied": "{matched} priorità applicate.",
+  "upload_priorities_applied_with_unmatched": "{matched} priorità applicate ({unmatched} titolo/i del file non trovati nella lista di quest'anno).",
+  "upload_priorities_error": "Impossibile leggere questo file. Controlla la console per i dettagli.",
+
+  "min_break_label": "Pausa min. tra i film (min):",
+  "build_button": "Crea il mio programma",
+  "build_button_computing": "Calcolo in corso…",
+
+  "expert_mode_summary": "Modalità esperto",
+  "objective_label": "Obiettivo:",
+  "objective_linear": "Lineare",
+  "objective_quadratic": "Quadratico",
+  "objective_exponential": "Esponenziale",
+  "objective_note": "Lineare si limita a somma le priorità. Quadratico ed Esponenziale favoriscono i film con la priorità più alta rispetto a un numero maggiore di film con priorità più basse — Esponenziale in modo molto più marcato di Quadratico. In ogni caso, il totale/min/media/max mostrati sotto sono sempre somme Lineari, anche quando un obiettivo diverso ha determinato il programma.",
+  "n_simulations_label": "Simulazioni da eseguire (viene mantenuto il miglior risultato):",
+
+  "capped_priority_warning": "{count} film hanno una priorità superiore a {cap}; per l'obiettivo esponenziale, le priorità superiori a {cap} vengono trattate come esattamente {cap} (questo non modifica il valore della priorità stesso, ma solo il modo in cui l'obiettivo esponenziale lo pesa).",
+
+  "table_header_priority": "Priorità",
+  "table_header_title": "Titolo",
+  "table_header_category": "Categoria",
+  "table_header_country": "Paese",
+  "table_header_year": "Anno",
+  "table_header_screenings": "Proiezioni",
+
+  "results_heading": "Il tuo programma",
+  "results_summary": "Priorità totale: {total} · {selected}/{total_with_priority} film classificati programmati ({rate}%) · {elapsed}s",
+  "results_summary_with_stats": " · su {n} simulazioni — min {min}, media {mean}, max {max}",
+  "results_summary_objective_note": " (scelto dall'obiettivo {objective}, non necessariamente il più alto tra questi)",
+  "download_schedule": "Scarica i film selezionati",
+
+  "warnings_heading": "Di misura:",
+  "warnings_note": "queste proiezioni consecutive ti lasciano pochissimo tempo per spostarti.",
+  "warnings_item": "{first_title} ({first_time}) → {second_title} ({second_time}) — meno di 5 minuti per arrivarci.",
+
+  "schedule_heading": "Confermati",
+  "schedule_empty": "Non c'è ancora nulla in programma — imposta qualche priorità qui sopra e ricrea il programma.",
+  "break_time_label": "Pausa prima del prossimo film: {duration}",
+
+  "discarded_heading": "Esclusi",
+  "discarded_note": "Ordinati per priorità decrescente. Aumenta una priorità e ricrea il programma per provare a recuperarlo.",
+  "discarded_empty": "Nessuno escluso — tutto ciò che hai classificato è stato incluso.",
+  "discarded_priority": "priorità {priority}",
+  "discarded_reason_unavailable": "{date} {time} — non disponibile",
+  "discarded_reason_outscored": "{date} {time} — libero, ma superato dal resto del programma",
+  "discarded_reason_blocked": "{date} {time} — in conflitto con {blockers}",
+
+  "error_generic": "Si è verificato un errore durante la creazione del programma. Controlla la console per i dettagli.",
+
+  "footer_before_link": "Funziona interamente nel tuo browser tramite",
+  "footer_after_link": "Niente di ciò che inserisci lascia il tuo computer.",
+
+  "language_label": "Lingua:"
+}
