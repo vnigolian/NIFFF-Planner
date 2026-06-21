@@ -427,6 +427,31 @@ function renderWarnings(warnings) {
   warningsBlock.hidden = false;
 }
 
+function parseHhMmToMinutes(hhmm) {
+  const [hours, minutes] = hhmm.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function parseLengthToMinutes(length) {
+  // Format is "NNN'" (e.g. "137'"); some entries (a couple of
+  // role-playing-game events in the real catalog) have no listed
+  // length at all -- return null rather than guessing.
+  if (!length) {
+    return null;
+  }
+  const minutes = parseInt(length.replace("'", ""), 10);
+  return Number.isFinite(minutes) ? minutes : null;
+}
+
+function formatBreakDuration(minutes) {
+  if (minutes < 60) {
+    return `${minutes} min`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const remaining = minutes % 60;
+  return remaining === 0 ? `${hours}h` : `${hours}h${remaining.toString().padStart(2, "0")}`;
+}
+
 function renderSchedule(schedule) {
   scheduleList.innerHTML = "";
 
@@ -463,7 +488,10 @@ function renderSchedule(schedule) {
     const list = document.createElement("ol");
     list.className = "ticket-list";
 
-    for (const entry of block.entries) {
+    for (let i = 0; i < block.entries.length; i++) {
+      const entry = block.entries[i];
+      const nextEntry = i + 1 < block.entries.length ? block.entries[i + 1] : null;
+
       const li = document.createElement("li");
       li.className = "ticket-item";
       li.innerHTML = `
@@ -474,6 +502,25 @@ function renderSchedule(schedule) {
         </div>
         <div class="ticket-item__priority">priority ${entry.priority}</div>
       `;
+
+      // Break time before the NEXT movie, shown at the end of THIS one --
+      // only meaningful between two movies on the SAME day (the last
+      // movie of a day has no "next" in any scheduling-relevant sense),
+      // and only when this movie's length is actually known (a couple of
+      // real catalog entries, like RPG events, have no listed length).
+      const lengthMinutes = parseLengthToMinutes(entry.length);
+      if (nextEntry != null && lengthMinutes != null) {
+        const endMinutes = parseHhMmToMinutes(entry.time) + lengthMinutes;
+        const breakMinutes = parseHhMmToMinutes(nextEntry.time) - endMinutes;
+        const breakRow = document.createElement("div");
+        breakRow.className = "ticket-item__break";
+        if (breakMinutes <= 5) {
+          breakRow.classList.add("ticket-item__break--tight");
+        }
+        breakRow.textContent = `Break time before next movie: ${formatBreakDuration(breakMinutes)}`;
+        li.appendChild(breakRow);
+      }
+
       list.appendChild(li);
     }
 

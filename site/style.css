@@ -676,6 +676,22 @@ input[type="number"]:focus-visible {
   padding: 0.65rem 0.9rem;
 }
 
+.ticket-item__break {
+  grid-column: 1 / -1;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed rgba(20, 21, 26, 0.18);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: rgba(20, 21, 26, 0.55);
+}
+
+.ticket-item__break--tight {
+  color: #c0152f;
+  font-weight: 700;
+  border-top-color: rgba(192, 21, 47, 0.35);
+}
+
 .ticket-item__time {
   font-family: var(--font-mono);
   font-weight: 700;
