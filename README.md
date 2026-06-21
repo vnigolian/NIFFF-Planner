@@ -4,7 +4,8 @@ Website available [here](https://vnigolian.github.io/NIFFF-Planner/site/)
 
 ## TODOS
 
-* add the break time as a field on the web UI
+* improve UI
+* add break time between movies
 * implement the optimal, MILP-based solver
 
 A static, no-backend tool for planning a festival schedule: rank the movies
@@ -24,15 +25,35 @@ also shows the min/mean/max total priority across all simulations, so
 you can get a feel for how much variance there is and whether running
 more would likely help.
 
+There's also an **objective function** picker (Linear / Quadratic /
+Exponential) controlling what "best" means when comparing simulations:
+- **Linear** (default): just add up priorities. Two priority-5 picks are
+  worth exactly as much as one priority-10 pick.
+- **Quadratic**: weight(priority) = priority² — favors landing your
+  single highest-priority picks over a pile of lower-priority ones.
+- **Exponential**: weight(priority) = 10^priority — favors this much
+  more aggressively (one extra point of priority is worth 10× more).
+  Priorities above 10 are treated as exactly 10 for this calculation
+  only (shown as an explicit warning when it applies) — without a cap,
+  10^priority blows up to meaningless magnitudes for anything typed
+  well above the festival's intended ~1-10 priority range.
+
+Important: regardless of which objective is selected, the displayed
+total/min/mean/max are always plain **Linear** sums — with a non-linear
+objective, the schedule that wins isn't necessarily the one with the
+highest linear sum (it's the one that scored highest under the chosen
+weighting), so the displayed total can legitimately be *lower* than the
+displayed max. The UI calls this out explicitly when it's the case.
+
 (`planner_core.py` also has `solve()` — a single run, no statistics —
 and `solve_optimal()` — an exact but potentially slow exhaustive search,
-since this scheduling problem is NP-hard — kept as library functions for
-reference/comparison, but they're not exposed in the UI.)
+since this scheduling problem is NP-hard, and only supports the Linear
+objective — kept as library functions for reference/comparison, but
+they're not exposed in the UI.)
 
-Weighting schemes and bulk-edit-by-category (beyond the free-text
-filter's "apply to filtered" button, which now has its own "don't
-overwrite already-set priorities" checkbox) are intentionally not in
-this version yet.
+Bulk-edit-by-category (beyond the free-text filter's "apply to filtered"
+button, which has its own "don't overwrite already-set priorities"
+checkbox) is intentionally not in this version yet.
 
 ## Repo layout
 

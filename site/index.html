@@ -90,6 +90,26 @@
               step="1"
               value="200"
             />
+            <label for="objective-select" class="algorithm-choice__label">
+              Objective:
+            </label>
+            <select id="objective-select" class="algorithm-choice__select">
+              <option value="linear" selected>Linear</option>
+              <option value="quadratic">Quadratic</option>
+              <option value="exponential">Exponential</option>
+            </select>
+            <label for="min-break-input" class="algorithm-choice__label">
+              Min. break between movies (min):
+            </label>
+            <input
+              type="number"
+              id="min-break-input"
+              class="algorithm-choice__n-input"
+              min="0"
+              max="240"
+              step="5"
+              value="0"
+            />
           </span>
           <button id="run-button" class="button button--primary" type="button">
             Build my schedule
@@ -99,6 +119,15 @@
             Computing&hellip;
           </span>
         </div>
+        <p class="algorithm-choice__note">
+          Linear just adds up priorities. Quadratic and Exponential favor
+          landing your single highest-priority picks over a larger pile
+          of lower-priority ones &mdash; Exponential much more
+          aggressively than Quadratic. Either way, the total/min/mean/max
+          shown below are always plain (Linear) sums, even when a
+          different objective picked the schedule.
+        </p>
+        <p id="capped-priority-warning" class="capped-priority-warning" hidden></p>
         <p id="bulk-priority-feedback" class="bulk-priority__feedback" aria-live="polite"></p>
 
         <div class="priority-file-box">

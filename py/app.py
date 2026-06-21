@@ -14,6 +14,7 @@ import io
 
 from pyodide.http import open_url
 
+from planner_core import EXPONENTIAL_PRIORITY_CAP
 from planner_io import (
     DEFAULT_DAY_BEGIN,
     DEFAULT_DAY_END,
@@ -82,7 +83,12 @@ def load_movies() -> list[dict]:
     for later use by run_plan()."""
     global _movies_cache
 
-    csv_text = open_url(MOVIES_CSV_PATH).read()
+    # Cache-busting query param: open_url() has no cache-control option of
+    # its own, and a stale cached movies.csv would silently show last
+    # year's catalog with no obvious error -- not worth the risk.
+    import time
+
+    csv_text = open_url(f"{MOVIES_CSV_PATH}?v={int(time.time() * 1000)}").read()
     _movies_cache = _load_movies_csv(csv_text)
 
     return [
@@ -127,6 +133,7 @@ def run_plan(
     min_break_minutes: int = 0,
     algorithm: str = "simulations",
     n_simulations: int = 200,
+    objective: str = "linear",
 ) -> dict:
     """Runs the planner against the cached movie list (see load_movies()).
 
@@ -142,7 +149,9 @@ def run_plan(
 
     `algorithm`: "simulations" (default), "fast", or "optimal" -- see
     planner_io.plan() for what each means; "optimal" can take several
-    seconds or longer. `n_simulations` only applies to "simulations".
+    seconds or longer. `n_simulations`/`objective` only apply to
+    "simulations". `objective`: "linear" (default), "quadratic", or
+    "exponential" -- see planner_core.WEIGHT_FUNCTIONS.
     """
     if _movies_cache is None:
         raise RuntimeError("load_movies() must be called before run_plan()")
@@ -161,6 +170,22 @@ def run_plan(
     # values coming through as JS numbers (floats) rather than Python ints.
     clean_priorities = {title: int(value) for title, value in priorities.items()}
 
+    # The exponential objective internally clamps any priority above
+    # EXPONENTIAL_PRIORITY_CAP -- surface that as an explicit message
+    # rather than silently changing behavior with no explanation.
+    capped_priority_warning = None
+    if objective == "exponential":
+        n_capped = sum(
+            1 for p in clean_priorities.values() if p > EXPONENTIAL_PRIORITY_CAP
+        )
+        if n_capped > 0:
+            capped_priority_warning = (
+                f"{n_capped} movie(s) have a priority above {EXPONENTIAL_PRIORITY_CAP}; "
+                f"for the exponential objective, priorities above {EXPONENTIAL_PRIORITY_CAP} "
+                f"are treated as exactly {EXPONENTIAL_PRIORITY_CAP} (this doesn't change the "
+                f"priority value itself, just how the exponential objective weighs it)."
+            )
+
     import time
 
     started_at = time.time()
@@ -171,6 +196,7 @@ def run_plan(
         min_break_minutes,
         algorithm,
         n_simulations,
+        objective,
     )
     elapsed_seconds = time.time() - started_at
 
@@ -178,6 +204,8 @@ def run_plan(
 
     return {
         "algorithm_used": algorithm,
+        "objective_used": objective,
+        "capped_priority_warning": capped_priority_warning,
         "n_simulations_used": n_simulations if algorithm == "simulations" else None,
         "simulation_stats": result.simulation_stats,
         "elapsed_seconds": round(elapsed_seconds, 2),

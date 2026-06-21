@@ -317,23 +317,30 @@ def plan(
     min_break_minutes: int,
     algorithm: str = "simulations",
     n_simulations: int = 200,
+    objective: str = "linear",
 ) -> PlanResult:
     """`algorithm`:
       - "simulations" (default): solve_best_of_n() -- runs solve()
         `n_simulations` times with different random seeds and keeps the
-        best result. Fast (each run is a fraction of a millisecond even
-        at full festival scale), with no guarantee of finding the true
-        optimum -- but tends to find a meaningfully better schedule the
-        more simulations are run. `n_simulations` is ignored for other
-        algorithm values.
+        best result, judged by `objective` ("linear", "quadratic", or
+        "exponential" -- see planner_core.WEIGHT_FUNCTIONS). The
+        reported total_priority and simulation_stats are always PLAIN
+        LINEAR sums regardless of `objective` -- with a non-linear
+        objective, the selected run is not necessarily the one with the
+        highest linear sum (see solve_best_of_n's docstring). Fast (each
+        run is a fraction of a millisecond even at full festival scale),
+        with no guarantee of finding the true optimum under whichever
+        objective was chosen. `n_simulations`/`objective` are ignored
+        for other algorithm values.
       - "fast": solve() -- a single quick, always-feasible but not-
         necessarily-optimal random assignment (equivalent to
-        "simulations" with n_simulations=1, kept as a distinct option
-        for callers that don't need statistics).
+        "simulations" with n_simulations=1 and objective="linear", kept
+        as a distinct option for callers that don't need statistics).
       - "optimal": solve_optimal() -- an exact branch-and-bound search
-        that's guaranteed to find the best possible schedule, but can
-        take several seconds (or, in the worst case, much longer -- this
-        problem is NP-hard) on realistic festival-scale inputs.
+        that's guaranteed to find the best possible LINEAR-objective
+        schedule, but can take several seconds (or, in the worst case,
+        much longer -- this problem is NP-hard) on realistic festival-
+        scale inputs. Does not support non-linear objectives.
     See planner_core.py for details on all three.
     """
     planner_movies = build_planner_movies(movies, priorities, availability)
@@ -344,7 +351,7 @@ def plan(
         total_priority, chosen = solve_optimal(movie_opts, min_break_minutes)
     elif algorithm == "simulations":
         total_priority, chosen, simulation_stats = solve_best_of_n(
-            movie_opts, min_break_minutes, n_simulations
+            movie_opts, min_break_minutes, n_simulations, objective
         )
     elif algorithm == "fast":
         total_priority, chosen = solve(movie_opts, min_break_minutes)

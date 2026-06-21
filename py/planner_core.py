@@ -95,46 +95,95 @@ def solve(
     return total_priority, chosen
 
 
+def weight_linear(priority: int) -> float:
+    return priority
+
+
+def weight_quadratic(priority: int) -> float:
+    return priority**2
+
+
+EXPONENTIAL_PRIORITY_CAP = 10
+
+
+def weight_exponential(priority: int) -> float:
+    """10^priority, with the priority clamped to EXPONENTIAL_PRIORITY_CAP
+    first -- without a cap, this blows up to absurd, meaningless
+    magnitudes for any priority entered well above the festival's
+    intended 1-10ish range. The clamp only affects THIS weight
+    calculation; the underlying stored priority value, and any plain
+    linear-sum reporting, are never touched by it."""
+    return 10 ** min(priority, EXPONENTIAL_PRIORITY_CAP)
+
+
+WEIGHT_FUNCTIONS = {
+    "linear": weight_linear,
+    "quadratic": weight_quadratic,
+    "exponential": weight_exponential,
+}
+
+
 def solve_best_of_n(
-    movies: list[MovieOpt], min_break: int, n_simulations: int
+    movies: list[MovieOpt],
+    min_break: int,
+    n_simulations: int,
+    objective: str = "linear",
 ) -> tuple[int, dict, dict]:
     """Runs solve() `n_simulations` times, each with a different random
-    seed, and returns (best_total_priority, best_chosen, stats), where
-    stats is {"min": ..., "mean": ..., "max": ..., "n": n_simulations} --
-    the max here is always equal to best_total_priority, included for
-    convenience so callers don't need to recompute it.
+    seed, and returns (best_linear_total, best_chosen, stats).
 
-    Since solve() is cheap (a fraction of a millisecond per call even at
-    full festival scale -- a few hundred screenings), running it many
-    times and keeping the best result is a practical middle ground
-    between solve()'s speed and solve_optimal()'s exactness: more
-    simulations tend to find better schedules, but there's NO guarantee
-    of finding the true optimum, and improvement can plateau early for
-    some inputs while still improving at N=1000 for others -- it
-    depends on the specific priorities/conflicts in play, not just N.
+    `objective` selects which WEIGHT FUNCTION is used to decide which of
+    the n_simulations runs is "best" -- one of "linear" (weight(p) = p,
+    the default), "quadratic" (weight(p) = p^2), or "exponential"
+    (weight(p) = 10^min(p, 10) -- see EXPONENTIAL_PRIORITY_CAP).
+
+    IMPORTANT: regardless of `objective`, the returned best_linear_total
+    and the stats dict's min/mean/max are always PLAIN LINEAR sums of
+    selected movies' priorities -- never the weighted objective score.
+    This means that with a non-linear objective, the run selected as
+    "best" is NOT necessarily the run with the highest linear sum (it's
+    the run that scored highest under the chosen weighting, which can
+    favor a single very-high-priority pick over many medium-priority
+    ones) -- so the displayed/returned "max" can legitimately be HIGHER
+    than the selected run's own linear total. This is intentional: the
+    selection criterion and the reported statistic are deliberately
+    different things, by design (see the caller for how this is
+    surfaced to the user).
+
+    stats is {"min": ..., "mean": ..., "max": ..., "n": n_simulations},
+    all computed over LINEAR sums across all n_simulations runs.
     """
     if n_simulations < 1:
         raise ValueError("n_simulations must be at least 1")
+    if objective not in WEIGHT_FUNCTIONS:
+        raise ValueError(f"Unknown objective {objective!r}; expected one of {list(WEIGHT_FUNCTIONS)}")
 
-    best_total = 0
+    weight_fn = WEIGHT_FUNCTIONS[objective]
+    priority_by_movie_id = {m.movie_id: m.priority for m in movies}
+
+    best_objective_score = -1  # -1 so even an all-zero run (score 0) can become the initial "best"
+    best_linear_total = 0
     best_chosen: dict[int, ScreeningOpt] = {}
-    all_totals: list[int] = []
+    all_linear_totals: list[int] = []
 
     for seed in range(n_simulations):
-        total, chosen = solve(movies, min_break, rng=random.Random(seed))
-        all_totals.append(total)
-        if total > best_total:
-            best_total = total
+        linear_total, chosen = solve(movies, min_break, rng=random.Random(seed))
+        all_linear_totals.append(linear_total)
+
+        objective_score = sum(weight_fn(priority_by_movie_id[movie_id]) for movie_id in chosen)
+        if objective_score > best_objective_score:
+            best_objective_score = objective_score
+            best_linear_total = linear_total
             best_chosen = chosen
 
     stats = {
-        "min": min(all_totals),
-        "mean": sum(all_totals) / len(all_totals),
-        "max": max(all_totals),
+        "min": min(all_linear_totals),
+        "mean": sum(all_linear_totals) / len(all_linear_totals),
+        "max": max(all_linear_totals),
         "n": n_simulations,
     }
 
-    return best_total, best_chosen, stats
+    return best_linear_total, best_chosen, stats
 
 
 def solve_optimal(movies: list[MovieOpt], min_break: int) -> tuple[int, dict]:

@@ -295,6 +295,36 @@ main {
   color: var(--ink);
 }
 
+.algorithm-choice__select {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid rgba(20, 21, 26, 0.3);
+  border-radius: 3px;
+  background: var(--paper-bright);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.algorithm-choice__note {
+  margin: 0.5rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: rgba(20, 21, 26, 0.55);
+  max-width: 48rem;
+}
+
+.capped-priority-warning {
+  margin: 0.6rem 0 0;
+  font-size: 0.82rem;
+  background: rgba(255, 210, 63, 0.22);
+  border: 1px solid rgba(20, 21, 26, 0.2);
+  border-radius: 3px;
+  padding: 0.5rem 0.7rem;
+  color: rgba(20, 21, 26, 0.8);
+}
+
 .run-spinner {
   display: inline-flex;
   align-items: center;

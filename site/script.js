@@ -25,6 +25,9 @@ const priorityFileFeedback = document.getElementById("priority-file-feedback");
 const runButton = document.getElementById("run-button");
 const runSpinner = document.getElementById("run-spinner");
 const nSimulationsInput = document.getElementById("n-simulations-input");
+const objectiveSelect = document.getElementById("objective-select");
+const minBreakInput = document.getElementById("min-break-input");
+const cappedPriorityWarning = document.getElementById("capped-priority-warning");
 const resultsSection = document.getElementById("results-section");
 const resultsSummary = document.getElementById("results-summary");
 const downloadScheduleButton = document.getElementById("download-schedule");
@@ -533,9 +536,20 @@ function renderResult(result) {
   if (stats != null && stats.n > 1) {
     const mean = Math.round(stats.mean * 10) / 10;
     summaryText += ` \u00b7 across ${stats.n} simulations \u2014 min ${stats.min}, mean ${mean}, max ${stats.max}`;
+    if (result.objective_used && result.objective_used !== "linear") {
+      // With a non-linear objective, the schedule that WON wasn't
+      // necessarily the one with the highest linear sum -- "Total
+      // priority" above can legitimately be lower than "max" here.
+      summaryText += ` (picked by the ${result.objective_used} objective, not necessarily the highest of these)`;
+    }
   }
 
   resultsSummary.textContent = summaryText;
+
+  cappedPriorityWarning.hidden = result.capped_priority_warning == null;
+  if (result.capped_priority_warning != null) {
+    cappedPriorityWarning.textContent = result.capped_priority_warning;
+  }
 
   renderWarnings(result.tight_transition_warnings);
   renderSchedule(result.schedule);
@@ -560,6 +574,10 @@ async function runPlan() {
   const parsedNSimulations = parseInt(nSimulationsInput.value, 10);
   const nSimulations =
     Number.isFinite(parsedNSimulations) && parsedNSimulations >= 1 ? parsedNSimulations : 200;
+  const objective = objectiveSelect.value;
+
+  const parsedMinBreak = parseInt(minBreakInput.value, 10);
+  const minBreak = Number.isFinite(parsedMinBreak) && parsedMinBreak >= 0 ? parsedMinBreak : 0;
 
   // NOTE: Pyodide runs on the main thread here, so a large number of
   // simulations can take a noticeable moment, during which the page
@@ -581,9 +599,10 @@ async function runPlan() {
     const resultPy = runPlanPy(
       pyodide.toPy(priorities),
       pyodide.toPy(availabilityRows),
-      0,
+      minBreak,
       "simulations",
-      nSimulations
+      nSimulations,
+      objective
     );
     const result = resultPy.toJs({ dict_converter: Object.fromEntries });
     resultPy.destroy();
@@ -607,9 +626,17 @@ async function boot() {
 
   // Fetch the Python source files and write them into Pyodide's virtual
   // filesystem so they can be imported like normal local modules.
+  //
+  // cache: "no-store" + a cache-busting query param: these files change
+  // frequently during development, and a stale cached copy of even ONE
+  // of them (e.g. an old app.py with a different run_plan() signature)
+  // produces confusing errors that look like a code bug rather than a
+  // caching issue -- this has bitten us more than once, so don't rely
+  // on the browser's default caching behavior here.
+  const cacheBuster = Date.now();
   const pyModules = ["clique_bound.py", "planner_core.py", "planner_io.py", "app.py"];
   for (const filename of pyModules) {
-    const response = await fetch(`../py/${filename}`);
+    const response = await fetch(`../py/${filename}?v=${cacheBuster}`, { cache: "no-store" });
     const source = await response.text();
     pyodide.FS.writeFile(filename, source);
   }
