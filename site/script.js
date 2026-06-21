@@ -12,6 +12,7 @@ const statusBarFill = document.getElementById("status-bar-fill");
 const statusSection = document.getElementById("status-section");
 const moviesSection = document.getElementById("movies-section");
 const moviesTbody = document.getElementById("movies-tbody");
+const selectedCount = document.getElementById("selected-count");
 const availabilityDaysContainer = document.getElementById("availability-days");
 const movieFilterInput = document.getElementById("movie-filter");
 const bulkPriorityValueInput = document.getElementById("bulk-priority-value");
@@ -123,6 +124,19 @@ function setRowPriority(row, value) {
   input.value = value;
   const stub = input.closest(".priority-stub");
   stub.classList.toggle("priority-stub--active", Number(value) > 0);
+  updateSelectedCount();
+}
+
+function updateSelectedCount() {
+  const rows = moviesTbody.querySelectorAll("tr");
+  let selected = 0;
+  rows.forEach((row) => {
+    const value = Number(row.querySelector("[data-priority-input]").value) || 0;
+    if (value > 0) {
+      selected += 1;
+    }
+  });
+  selectedCount.textContent = `You have selected ${selected}/${rows.length} movies.`;
 }
 
 function csvEscape(value) {
@@ -353,8 +367,11 @@ function renderMoviesTable(movieList) {
     input.addEventListener("input", () => {
       const stub = input.closest(".priority-stub");
       stub.classList.toggle("priority-stub--active", Number(input.value) > 0);
+      updateSelectedCount();
     });
   });
+
+  updateSelectedCount();
 }
 
 function applyMovieFilter() {
@@ -632,10 +649,15 @@ async function waitForNextPaint() {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
+const MAX_N_SIMULATIONS = 10000;
+const DEFAULT_N_SIMULATIONS = 1000;
+
 async function runPlan() {
   const parsedNSimulations = parseInt(nSimulationsInput.value, 10);
   const nSimulations =
-    Number.isFinite(parsedNSimulations) && parsedNSimulations >= 1 ? parsedNSimulations : 200;
+    Number.isFinite(parsedNSimulations) && parsedNSimulations >= 1
+      ? Math.min(parsedNSimulations, MAX_N_SIMULATIONS)
+      : DEFAULT_N_SIMULATIONS;
   const objective = objectiveSelect.value;
 
   const parsedMinBreak = parseInt(minBreakInput.value, 10);
@@ -678,6 +700,41 @@ async function runPlan() {
     runButton.disabled = false;
     runSpinner.hidden = true;
   }
+}
+
+function syncTableHeightToAvailabilityPanel() {
+  // CSS alone can't make one element's height track a SIBLING's natural
+  // content height when neither has an explicit size -- grid/flex
+  // "stretch" only matches items to whichever is tallest, which becomes
+  // a circular blow-up once the table's own content is also unbounded.
+  // So this is done in JS instead: measure the availability panel's
+  // real rendered height and cap table-wrap so that, TOGETHER WITH the
+  // top-panels-row sitting above it in the same column, the combined
+  // height matches the sidebar -- letting the table scroll internally
+  // past that point instead of growing the page.
+  //
+  // Only applies in the wide, side-by-side layout (see the 880px
+  // breakpoint in style.css) -- in the stacked mobile layout the
+  // sidebar sits ABOVE everything else, so capping the table to its
+  // height wouldn't make visual sense there.
+  const availabilityPanel = document.querySelector(".availability-panel");
+  const topPanelsRow = document.querySelector(".top-panels-row");
+  const tableWrap = document.querySelector(".table-wrap");
+  if (availabilityPanel == null || topPanelsRow == null || tableWrap == null) {
+    return;
+  }
+
+  const isWideLayout = window.matchMedia("(min-width: 881px)").matches;
+  if (!isWideLayout) {
+    tableWrap.style.maxHeight = "";
+    return;
+  }
+
+  const availabilityPanelHeight = availabilityPanel.getBoundingClientRect().height;
+  const topPanelsRowHeight = topPanelsRow.getBoundingClientRect().height;
+  const topPanelsRowMarginBottom = parseFloat(getComputedStyle(topPanelsRow).marginBottom) || 0;
+  const remainingHeight = availabilityPanelHeight - topPanelsRowHeight - topPanelsRowMarginBottom;
+  tableWrap.style.maxHeight = `${Math.max(remainingHeight, 0)}px`;
 }
 
 async function boot() {
@@ -725,7 +782,10 @@ run_plan = app.run_plan
 
   renderAvailabilityDays(festivalDays);
   renderMoviesTable(movies);
+  syncTableHeightToAvailabilityPanel();
 }
+
+window.addEventListener("resize", syncTableHeightToAvailabilityPanel);
 
 movieFilterInput.addEventListener("input", () => {
   applyMovieFilter();
@@ -733,6 +793,13 @@ movieFilterInput.addEventListener("input", () => {
 });
 bulkPriorityApplyButton.addEventListener("click", applyBulkPriority);
 runButton.addEventListener("click", runPlan);
+
+nSimulationsInput.addEventListener("change", () => {
+  const parsed = parseInt(nSimulationsInput.value, 10);
+  if (Number.isFinite(parsed) && parsed > MAX_N_SIMULATIONS) {
+    nSimulationsInput.value = MAX_N_SIMULATIONS;
+  }
+});
 
 downloadPrioritiesButton.addEventListener("click", downloadPriorities);
 uploadPrioritiesTriggerButton.addEventListener("click", () => uploadPrioritiesInput.click());

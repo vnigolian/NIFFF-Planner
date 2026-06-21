@@ -164,6 +164,70 @@ main {
 
 /* --------------------------------------------------------------- table */
 
+.top-panels-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  align-items: stretch;
+}
+
+.build-panel,
+.priorities-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: rgba(20, 21, 26, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 1rem;
+}
+
+.build-panel__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.expert-mode {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: rgba(20, 21, 26, 0.05);
+  border: 1px dashed rgba(20, 21, 26, 0.3);
+  border-radius: 3px;
+  padding: 0.6rem 0.7rem;
+}
+
+.expert-mode__summary {
+  cursor: pointer;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 0.85rem;
+  color: rgba(20, 21, 26, 0.7);
+}
+
+.expert-mode[open] .expert-mode__summary {
+  margin-bottom: 0.25rem;
+}
+
+.selected-count {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+@media (max-width: 880px) {
+  .top-panels-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .movies-layout {
   display: grid;
   grid-template-columns: 16rem 1fr;
@@ -257,6 +321,9 @@ main {
 
 .movies-main {
   min-width: 0; /* allow the table to scroll horizontally inside the grid track */
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* let this shrink to the grid row's stretched height rather than growing to fit content */
 }
 
 @media (max-width: 880px) {
@@ -313,6 +380,14 @@ main {
   line-height: 1.4;
   color: rgba(20, 21, 26, 0.55);
   max-width: 48rem;
+}
+
+.algorithm-choice__note--boxed {
+  background: var(--paper-bright);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0.75rem 0.9rem;
+  margin: 0;
 }
 
 .capped-priority-warning {
@@ -396,7 +471,6 @@ main {
   flex-direction: column;
   align-items: flex-start;
   gap: 0.4rem;
-  flex: 1 1 22rem;
   background: rgba(20, 21, 26, 0.05);
   border: 1px dashed rgba(20, 21, 26, 0.3);
   border-radius: 3px;
@@ -463,8 +537,16 @@ main {
   color: var(--accent);
 }
 
+.bulk-priority__feedback--boxed {
+  background: var(--paper-bright);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0.6rem 0.9rem;
+  margin: 0;
+}
+
 .text-input {
-  flex: 1 1 16rem;
+  width: 100%;
   font-family: var(--font-body);
   font-size: 0.95rem;
   padding: 0.65rem 0.9rem;
@@ -508,8 +590,11 @@ input[type="number"]:focus-visible {
 
 .table-wrap {
   overflow-x: auto;
+  overflow-y: auto;
   border: 1px solid var(--line);
   border-radius: 3px;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .movies-table {
@@ -529,7 +614,7 @@ input[type="number"]:focus-visible {
 }
 
 .col-country {
-  width: 6%;
+  width: 7%;
 }
 
 .col-year {
@@ -552,7 +637,7 @@ input[type="number"]:focus-visible {
   text-transform: uppercase;
   color: rgba(20, 21, 26, 0.55);
   padding: 0.65rem 0.9rem;
-  background: rgba(20, 21, 26, 0.04);
+  background: var(--paper);
   border-bottom: 1px solid var(--line);
   position: sticky;
   top: 0;
