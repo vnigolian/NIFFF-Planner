@@ -4,12 +4,10 @@ Website available [here](https://vnigolian.github.io/NIFFF-Planner/site/)
 
 ## TODOS
 
-* fix break time computation
+* french and german translations
 * improve UI
-* rename "projector" for "simulator"
-* add break time between movies
-* implement the optimal, MILP-based solver
 * update readme
+* implement the optimal, MILP-based solver
 
 A static, no-backend tool for planning a festival schedule: rank the movies
 you want to see, and it builds a non-conflicting schedule for you. Runs

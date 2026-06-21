@@ -427,9 +427,24 @@ function renderWarnings(warnings) {
   warningsBlock.hidden = false;
 }
 
+const SHIFT_MINUTES = 5 * 60;
+const MINUTES_PER_DAY = 24 * 60;
+
 function parseHhMmToMinutes(hhmm) {
   const [hours, minutes] = hhmm.split(":").map(Number);
   return hours * 60 + minutes;
+}
+
+function shiftedMinutesOfDay(hhmm) {
+  // Same 5-hour shift used throughout the Python backend (see
+  // planner_io.py): a screening listed as "00:30" is really late at
+  // night, not early in the morning -- shifting every clock time 5
+  // hours earlier (wrapping within the day) puts it in the right
+  // relative order for gap math. Without this, a late-night movie
+  // followed by a past-midnight one produces a large NEGATIVE "gap"
+  // (e.g. 23:45 + 90min vs. a 00:30 start), since plain clock-time
+  // arithmetic has no idea 00:30 is actually LATER than 23:45 here.
+  return ((parseHhMmToMinutes(hhmm) - SHIFT_MINUTES) % MINUTES_PER_DAY + MINUTES_PER_DAY) % MINUTES_PER_DAY;
 }
 
 function parseLengthToMinutes(length) {
@@ -510,8 +525,8 @@ function renderSchedule(schedule) {
       // real catalog entries, like RPG events, have no listed length).
       const lengthMinutes = parseLengthToMinutes(entry.length);
       if (nextEntry != null && lengthMinutes != null) {
-        const endMinutes = parseHhMmToMinutes(entry.time) + lengthMinutes;
-        const breakMinutes = parseHhMmToMinutes(nextEntry.time) - endMinutes;
+        const endMinutes = shiftedMinutesOfDay(entry.time) + lengthMinutes;
+        const breakMinutes = shiftedMinutesOfDay(nextEntry.time) - endMinutes;
         const breakRow = document.createElement("div");
         breakRow.className = "ticket-item__break";
         if (breakMinutes <= 5) {
@@ -666,7 +681,7 @@ async function runPlan() {
 }
 
 async function boot() {
-  setStatus("Booting projector\u2026", 8);
+  setStatus("Booting simulator\u2026", 8);
   pyodide = await loadPyodide();
 
   setStatus("Loading the planner\u2026", 40);
