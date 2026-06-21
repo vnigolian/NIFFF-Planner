@@ -7,7 +7,7 @@
 
   "page_title": "NIFFF Planner",
   "header_eyebrow": "Outil non-officiel, fait par un fan",
-  "header_tagline": "Classez ce que vous voulez voir. Laissez le simulateur faire le reste.",
+  "header_tagline": "Définissez la priorité des films que vous voulez voir, et le simulateur fait le reste!",
 
   "status_booting": "Démarrage du simulateur…",
   "status_loading_planner": "Chargement du planificateur…",
@@ -17,17 +17,17 @@
   "status_bar_aria_label": "Chargement",
 
   "availability_heading": "Quand êtes-vous disponible ?",
-  "availability_note": "Chaque jour est disponible par défaut. Décochez un jour pour l'exclure entièrement — les horaires ci-dessous restent affichés, ils ne seront simplement pas utilisés.",
+  "availability_note": "Chaque jour est disponible par défaut. Décochez un jour pour l'exclure entièrement (les horaires restent affichés mais ne seront pas utilisés).",
   "availability_available_label": "disponible",
   "availability_from_label": "De",
   "availability_to_label": "à",
 
   "selected_count": "Vous avez sélectionné {selected}/{total} films.",
 
-  "movie_filter_placeholder": "Filtrer par titre, catégorie, pays…",
+  "movie_filter_placeholder": "Filtrer par titre, catégorie, code pays…",
   "priority_input_aria_label": "Priorité pour {title}",
 
-  "bulk_priority_label": "Définir la priorité des lignes filtrées",
+  "bulk_priority_label": "Définir la priorité des films filtrés",
   "bulk_priority_apply": "Appliquer aux films filtrés",
   "bulk_priority_overwrite_label": "écraser les priorités déjà définies",
   "bulk_priority_feedback": "Priorité {value} appliquée à {updated} film(s) {match_description}{skipped_note}.",
@@ -43,17 +43,17 @@
   "upload_priorities_applied_with_unmatched": "{matched} priorités appliquées ({unmatched} titre(s) du fichier introuvable(s) dans la liste de cette année).",
   "upload_priorities_error": "Impossible de lire ce fichier. Consultez la console pour plus de détails.",
 
-  "min_break_label": "Pause min. entre les films (min) :",
-  "build_button": "Construire mon programme",
+  "min_break_label": "Pause minimum entre les films (min):",
+  "build_button": "Faire mon programme",
   "build_button_computing": "Calcul en cours…",
 
   "expert_mode_summary": "Mode expert",
-  "objective_label": "Objectif :",
+  "objective_label": "Fonction objectif:",
   "objective_linear": "Linéaire",
   "objective_quadratic": "Quadratique",
   "objective_exponential": "Exponentiel",
   "objective_note": "Linéaire additionne simplement les priorités. Quadratique et Exponentiel favorisent vos films les mieux classés plutôt qu'un grand nombre de films moins prioritaires — Exponentiel de façon beaucoup plus marquée que Quadratique. Dans tous les cas, le total/min/moyenne/max affichés ci-dessous sont toujours des sommes Linéaires, même quand un autre objectif a déterminé le programme.",
-  "n_simulations_label": "Simulations à lancer (le meilleur résultat est gardé) :",
+  "n_simulations_label": "Simulations à lancer (le meilleur résultat est gardé):",
 
   "capped_priority_warning": "{count} film(s) ont une priorité supérieure à {cap} ; pour l'objectif exponentiel, les priorités supérieures à {cap} sont traitées comme exactement {cap} (cela ne change pas la priorité elle-même, seulement la façon dont l'objectif exponentiel la pondère).",
 
@@ -65,18 +65,18 @@
   "table_header_screenings": "Séances",
 
   "results_heading": "Votre programme",
-  "results_summary": "Priorité totale : {total} · {selected}/{total_with_priority} films classés programmés ({rate} %) · {elapsed}s",
+  "results_summary": "Priorité totale: {total} · {selected}/{total_with_priority} films sélectionnés au programme ({rate} %) · {elapsed}s",
   "results_summary_with_stats": " · sur {n} simulations — min {min}, moyenne {mean}, max {max}",
   "results_summary_objective_note": " (choisi par l'objectif {objective}, pas nécessairement le plus élevé de ceux-ci)",
-  "download_schedule": "Télécharger les films sélectionnés",
+  "download_schedule": "Télécharger le programme",
 
-  "warnings_heading": "Juste un peu serré :",
+  "warnings_heading": "Juste un peu serré:",
   "warnings_note": "ces séances bout-à-bout vous laissent très peu de temps pour vous déplacer.",
   "warnings_item": "{first_title} ({first_time}) → {second_title} ({second_time}) — moins de 5 minutes pour y arriver.",
 
   "schedule_heading": "Au programme",
   "schedule_empty": "Rien de programmé pour l'instant — définissez quelques priorités ci-dessus et relancez.",
-  "break_time_label": "Pause avant le prochain film : {duration}",
+  "break_time_label": "Pause avant le prochain film: {duration}",
 
   "discarded_heading": "Laissés de côté",
   "discarded_note": "Triés par priorité décroissante. Augmentez une priorité et relancez pour essayer de la récupérer.",
@@ -91,5 +91,5 @@
   "footer_before_link": "Fonctionne entièrement dans votre navigateur via",
   "footer_after_link": "Rien de ce que vous saisissez ne quitte votre machine.",
 
-  "language_label": "Langue :"
+  "language_label": "Langue:"
 }
