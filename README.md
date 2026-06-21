@@ -5,8 +5,7 @@ Website available [here](https://vnigolian.github.io/NIFFF-Planner/site/)
 ## TODOS
 
 * make loading faster?
-* french and german translations
-* update readme
+* finalise readme
 * implement the optimal, MILP-based solver
 
 A static, no-backend tool for planning a festival schedule: rank the movies
