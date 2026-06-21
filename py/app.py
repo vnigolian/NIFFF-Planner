@@ -121,7 +121,13 @@ UNAVAILABLE_BEGIN = "05:00"
 UNAVAILABLE_END = "05:01"
 
 
-def run_plan(priorities: dict, availability_rows: list, min_break_minutes: int = 0) -> dict:
+def run_plan(
+    priorities: dict,
+    availability_rows: list,
+    min_break_minutes: int = 0,
+    algorithm: str = "simulations",
+    n_simulations: int = 200,
+) -> dict:
     """Runs the planner against the cached movie list (see load_movies()).
 
     `availability_rows` is a list of {date, begin, end, available} dicts,
@@ -133,6 +139,10 @@ def run_plan(priorities: dict, availability_rows: list, min_break_minutes: int =
       the displayed fields (see script.js).
     - `available` True uses `begin`/`end` as given (blank meaning "use
       the default for that field", same as build_availability_from_rows).
+
+    `algorithm`: "simulations" (default), "fast", or "optimal" -- see
+    planner_io.plan() for what each means; "optimal" can take several
+    seconds or longer. `n_simulations` only applies to "simulations".
     """
     if _movies_cache is None:
         raise RuntimeError("load_movies() must be called before run_plan()")
@@ -151,9 +161,26 @@ def run_plan(priorities: dict, availability_rows: list, min_break_minutes: int =
     # values coming through as JS numbers (floats) rather than Python ints.
     clean_priorities = {title: int(value) for title, value in priorities.items()}
 
-    result = plan(_movies_cache, clean_priorities, availability, min_break_minutes)
+    import time
+
+    started_at = time.time()
+    result = plan(
+        _movies_cache,
+        clean_priorities,
+        availability,
+        min_break_minutes,
+        algorithm,
+        n_simulations,
+    )
+    elapsed_seconds = time.time() - started_at
+
+    movies_by_title = {m.title: m for m in _movies_cache}
 
     return {
+        "algorithm_used": algorithm,
+        "n_simulations_used": n_simulations if algorithm == "simulations" else None,
+        "simulation_stats": result.simulation_stats,
+        "elapsed_seconds": round(elapsed_seconds, 2),
         "total_priority": result.total_priority,
         "n_movies_with_priority": result.n_movies_with_priority,
         "n_movies_selected": result.n_movies_selected,
@@ -164,6 +191,15 @@ def run_plan(priorities: dict, availability_rows: list, min_break_minutes: int =
                 "date": entry.screening.date,
                 "cinema": entry.screening.cinema,
                 "time": entry.screening.time,
+                # Full movie metadata, for the "download picked movies"
+                # export -- looked up here (rather than carried through
+                # planner_io's PlannerMovie) since this is purely a
+                # CSV-shape concern specific to this browser-facing layer.
+                "categories": movies_by_title[entry.movie.title].categories,
+                "country": movies_by_title[entry.movie.title].country,
+                "year": movies_by_title[entry.movie.title].year,
+                "length": movies_by_title[entry.movie.title].length,
+                "premiere": movies_by_title[entry.movie.title].premiere,
             }
             for entry in result.schedule
         ],

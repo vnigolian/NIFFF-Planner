@@ -269,6 +269,57 @@ main {
   }
 }
 
+.algorithm-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.85rem;
+  color: rgba(20, 21, 26, 0.7);
+}
+
+.algorithm-choice__label {
+  white-space: nowrap;
+}
+
+.algorithm-choice__n-input {
+  width: 4.2rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.82rem;
+  text-align: center;
+  padding: 0.2rem 0.3rem;
+  border: 1px solid rgba(20, 21, 26, 0.3);
+  border-radius: 3px;
+  background: var(--paper-bright);
+  color: var(--ink);
+}
+
+.run-spinner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: rgba(20, 21, 26, 0.7);
+}
+
+.run-spinner__icon {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgba(20, 21, 26, 0.2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: run-spinner-rotate 0.8s linear infinite;
+}
+
+@keyframes run-spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .priority-file-box {
   display: flex;
   flex-wrap: wrap;
@@ -312,13 +363,21 @@ main {
 
 .bulk-priority {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
   flex: 1 1 22rem;
   background: rgba(20, 21, 26, 0.05);
   border: 1px dashed rgba(20, 21, 26, 0.3);
   border-radius: 3px;
   padding: 0.45rem 0.7rem;
+}
+
+.bulk-priority__main-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .bulk-priority__label {
@@ -338,6 +397,16 @@ main {
   border-radius: 3px;
   background: var(--paper-bright);
   color: var(--ink);
+}
+
+.bulk-priority__overwrite-label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: rgba(20, 21, 26, 0.65);
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 .button--secondary {
@@ -430,7 +499,7 @@ input[type="number"]:focus-visible {
 }
 
 .col-country {
-  width: 7%;
+  width: 6%;
 }
 
 .col-year {

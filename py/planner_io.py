@@ -20,7 +20,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from planner_core import MovieOpt, ScreeningOpt, _conflicts, solve
+from planner_core import (
+    MovieOpt,
+    ScreeningOpt,
+    _conflicts,
+    solve,
+    solve_best_of_n,
+    solve_optimal,
+)
 
 # The festival's first day, used as day index 0 for the minutes-since-start
 # axis. Must match the actual festival dates for the year movies.csv was
@@ -300,6 +307,7 @@ class PlanResult:
     tight_transition_warnings: list[tuple[ScheduledEntry, ScheduledEntry]]
     n_movies_with_priority: int   # how many movies had priority > 0
     n_movies_selected: int        # how many of those were actually scheduled
+    simulation_stats: dict | None = None  # {min, mean, max, n}; only set for algorithm="simulations"
 
 
 def plan(
@@ -307,11 +315,43 @@ def plan(
     priorities: dict[str, int],
     availability: dict[int, AvailabilityWindow],
     min_break_minutes: int,
+    algorithm: str = "simulations",
+    n_simulations: int = 200,
 ) -> PlanResult:
+    """`algorithm`:
+      - "simulations" (default): solve_best_of_n() -- runs solve()
+        `n_simulations` times with different random seeds and keeps the
+        best result. Fast (each run is a fraction of a millisecond even
+        at full festival scale), with no guarantee of finding the true
+        optimum -- but tends to find a meaningfully better schedule the
+        more simulations are run. `n_simulations` is ignored for other
+        algorithm values.
+      - "fast": solve() -- a single quick, always-feasible but not-
+        necessarily-optimal random assignment (equivalent to
+        "simulations" with n_simulations=1, kept as a distinct option
+        for callers that don't need statistics).
+      - "optimal": solve_optimal() -- an exact branch-and-bound search
+        that's guaranteed to find the best possible schedule, but can
+        take several seconds (or, in the worst case, much longer -- this
+        problem is NP-hard) on realistic festival-scale inputs.
+    See planner_core.py for details on all three.
+    """
     planner_movies = build_planner_movies(movies, priorities, availability)
     movie_opts = to_movie_opts(planner_movies)
 
-    total_priority, chosen = solve(movie_opts, min_break_minutes)
+    simulation_stats = None
+    if algorithm == "optimal":
+        total_priority, chosen = solve_optimal(movie_opts, min_break_minutes)
+    elif algorithm == "simulations":
+        total_priority, chosen, simulation_stats = solve_best_of_n(
+            movie_opts, min_break_minutes, n_simulations
+        )
+    elif algorithm == "fast":
+        total_priority, chosen = solve(movie_opts, min_break_minutes)
+    else:
+        raise ValueError(
+            f"Unknown algorithm {algorithm!r}; expected 'fast', 'simulations', or 'optimal'"
+        )
 
     planner_movies_by_id = {pm.movie_id: pm for pm in planner_movies}
 
@@ -379,4 +419,5 @@ def plan(
         tight_transition_warnings=warnings,
         n_movies_with_priority=n_movies_with_priority,
         n_movies_selected=len(schedule),
+        simulation_stats=simulation_stats,
     )

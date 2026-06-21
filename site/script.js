@@ -15,6 +15,7 @@ const moviesTbody = document.getElementById("movies-tbody");
 const availabilityDaysContainer = document.getElementById("availability-days");
 const movieFilterInput = document.getElementById("movie-filter");
 const bulkPriorityValueInput = document.getElementById("bulk-priority-value");
+const bulkPriorityOverwriteCheckbox = document.getElementById("bulk-priority-overwrite");
 const bulkPriorityApplyButton = document.getElementById("bulk-priority-apply");
 const bulkPriorityFeedback = document.getElementById("bulk-priority-feedback");
 const downloadPrioritiesButton = document.getElementById("download-priorities");
@@ -22,6 +23,8 @@ const uploadPrioritiesTriggerButton = document.getElementById("upload-priorities
 const uploadPrioritiesInput = document.getElementById("upload-priorities-input");
 const priorityFileFeedback = document.getElementById("priority-file-feedback");
 const runButton = document.getElementById("run-button");
+const runSpinner = document.getElementById("run-spinner");
+const nSimulationsInput = document.getElementById("n-simulations-input");
 const resultsSection = document.getElementById("results-section");
 const resultsSummary = document.getElementById("results-summary");
 const downloadScheduleButton = document.getElementById("download-schedule");
@@ -364,17 +367,30 @@ function applyMovieFilter() {
 function applyBulkPriority() {
   const value = parseInt(bulkPriorityValueInput.value, 10);
   const safeValue = Number.isFinite(value) && value >= 0 ? value : 0;
+  const overwrite = bulkPriorityOverwriteCheckbox.checked;
 
   const visibleRows = Array.from(moviesTbody.querySelectorAll("tr")).filter(
     (row) => !row.hidden
   );
 
-  visibleRows.forEach((row) => setRowPriority(row, safeValue));
+  let updatedCount = 0;
+  let skippedCount = 0;
+
+  visibleRows.forEach((row) => {
+    const currentValue = Number(row.querySelector("[data-priority-input]").value) || 0;
+    if (!overwrite && currentValue > 0) {
+      skippedCount += 1;
+      return;
+    }
+    setRowPriority(row, safeValue);
+    updatedCount += 1;
+  });
 
   const query = movieFilterInput.value.trim();
-  bulkPriorityFeedback.textContent = query
-    ? `Set priority ${safeValue} on ${visibleRows.length} movie(s) matching "${query}".`
-    : `Set priority ${safeValue} on all ${visibleRows.length} movies (no filter active).`;
+  const matchDescription = query ? `matching "${query}"` : "(no filter active)";
+  const skippedNote = skippedCount > 0 ? `, left ${skippedCount} already-set movie(s) untouched` : "";
+  bulkPriorityFeedback.textContent =
+    `Set priority ${safeValue} on ${updatedCount} movie(s) ${matchDescription}${skippedNote}.`;
 }
 
 function collectPriorities() {
@@ -508,9 +524,18 @@ function renderResult(result) {
       ? Math.round((100 * result.n_movies_selected) / result.n_movies_with_priority)
       : 0;
 
-  resultsSummary.textContent =
+  let summaryText =
     `Total priority: ${result.total_priority} \u00b7 ` +
-    `${result.n_movies_selected}/${result.n_movies_with_priority} ranked movies scheduled (${successRate}%)`;
+    `${result.n_movies_selected}/${result.n_movies_with_priority} ranked movies scheduled (${successRate}%) \u00b7 ` +
+    `${result.elapsed_seconds}s`;
+
+  const stats = result.simulation_stats;
+  if (stats != null && stats.n > 1) {
+    const mean = Math.round(stats.mean * 10) / 10;
+    summaryText += ` \u00b7 across ${stats.n} simulations \u2014 min ${stats.min}, mean ${mean}, max ${stats.max}`;
+  }
+
+  resultsSummary.textContent = summaryText;
 
   renderWarnings(result.tight_transition_warnings);
   renderSchedule(result.schedule);
@@ -520,15 +545,46 @@ function renderResult(result) {
   resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+async function waitForNextPaint() {
+  // Pyodide's solve call is synchronous from JS's point of view, so
+  // nothing repaints once it starts -- this is the standard trick to
+  // GUARANTEE one real paint happens first: requestAnimationFrame fires
+  // right before the browser's next paint, and the nested setTimeout(0)
+  // yields once more so that paint actually lands before we resume,
+  // rather than risking it getting batched with whatever runs next.
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 async function runPlan() {
+  const parsedNSimulations = parseInt(nSimulationsInput.value, 10);
+  const nSimulations =
+    Number.isFinite(parsedNSimulations) && parsedNSimulations >= 1 ? parsedNSimulations : 200;
+
+  // NOTE: Pyodide runs on the main thread here, so a large number of
+  // simulations can take a noticeable moment, during which the page
+  // genuinely freezes (no repaints, no further UI updates) -- there's
+  // no way to show LIVE progress without moving Pyodide into a Web
+  // Worker, which this site doesn't do yet. What we CAN do is guarantee
+  // the spinner below actually gets painted before the freeze starts
+  // (see waitForNextPaint), so at least the click feels acknowledged
+  // rather than silently doing nothing.
   runButton.disabled = true;
-  runButton.textContent = "Building\u2026";
+  runSpinner.hidden = false;
+
+  await waitForNextPaint();
 
   try {
     const priorities = collectPriorities();
     const availabilityRows = collectAvailability();
     const runPlanPy = pyodide.globals.get("run_plan");
-    const resultPy = runPlanPy(pyodide.toPy(priorities), pyodide.toPy(availabilityRows), 0);
+    const resultPy = runPlanPy(
+      pyodide.toPy(priorities),
+      pyodide.toPy(availabilityRows),
+      0,
+      "simulations",
+      nSimulations
+    );
     const result = resultPy.toJs({ dict_converter: Object.fromEntries });
     resultPy.destroy();
     runPlanPy.destroy();
@@ -539,7 +595,7 @@ async function runPlan() {
     resultsSection.hidden = false;
   } finally {
     runButton.disabled = false;
-    runButton.textContent = "Build my schedule";
+    runSpinner.hidden = true;
   }
 }
 
@@ -551,7 +607,7 @@ async function boot() {
 
   // Fetch the Python source files and write them into Pyodide's virtual
   // filesystem so they can be imported like normal local modules.
-  const pyModules = ["planner_core.py", "planner_io.py", "app.py"];
+  const pyModules = ["clique_bound.py", "planner_core.py", "planner_io.py", "app.py"];
   for (const filename of pyModules) {
     const response = await fetch(`../py/${filename}`);
     const source = await response.text();
