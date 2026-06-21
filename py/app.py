@@ -235,6 +235,7 @@ def run_plan(
             {
                 "title": d.movie.title,
                 "priority": d.movie.priority,
+                "categories": movies_by_title[d.movie.title].categories,
                 "conflicts": [
                     {
                         "date": c.screening.date,

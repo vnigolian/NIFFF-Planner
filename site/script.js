@@ -513,7 +513,7 @@ function renderSchedule(schedule) {
       li.innerHTML = `
         <div class="ticket-item__time">${entry.time}<span>${entry.date}</span></div>
         <div>
-          <div class="ticket-item__title">${entry.title}</div>
+          <div class="ticket-item__title">${entry.title}<span class="ticket-item__category">${entry.categories || ""}</span></div>
           <div class="ticket-item__cinema">${entry.cinema}</div>
         </div>
         <div class="ticket-item__priority">priority ${entry.priority}</div>
@@ -572,7 +572,10 @@ function renderDiscarded(discarded) {
     const reasons = movie.conflicts.map(formatConflictReason).join("");
     li.innerHTML = `
       <div class="discard-item__head">
-        <span class="discard-item__title">${movie.title}</span>
+        <span class="discard-item__title-group">
+          <span class="discard-item__title">${movie.title}</span>
+          <span class="discard-item__category">${movie.categories || ""}</span>
+        </span>
         <span class="discard-item__priority">priority ${movie.priority}</span>
       </div>
       <ul class="discard-item__reasons">${reasons}</ul>
