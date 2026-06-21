@@ -4,7 +4,7 @@ Website available [here](https://vnigolian.github.io/NIFFF-Planner/site/)
 
 ## TODOS
 
-* csv export column ordering + trimming
+* make loading faster?
 * french and german translations
 * update readme
 * implement the optimal, MILP-based solver

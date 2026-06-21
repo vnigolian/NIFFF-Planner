@@ -293,30 +293,14 @@ function downloadSchedule() {
   }
 
   const header = [
-    "Title", "Categories", "Country", "Year", "Length", "Premiere",
-    "Date 1", "Cinema 1", "Time 1",
-    "Date 2", "Cinema 2", "Time 2",
-    "Date 3", "Cinema 3", "Time 3",
-    "Date 4", "Cinema 4", "Time 4",
-    "Date 5", "Cinema 5", "Time 5",
-    "Date 6", "Cinema 6", "Time 6",
-    "Date 7", "Cinema 7", "Time 7",
-    "Date 8", "Cinema 8", "Time 8",
-    "Date 9", "Cinema 9", "Time 9",
+    "Title", "Date", "Cinema", "Time",
+    "Categories", "Country", "Year", "Length", "Premiere",
   ];
 
-  const rows = lastScheduleResult.map((entry) => {
-    const row = [
-      entry.title, entry.categories, entry.country, entry.year, entry.length, entry.premiere,
-      entry.date, entry.cinema, entry.time,
-    ];
-    // Slots 2-9 are always blank: each picked movie has exactly one chosen
-    // screening, written into slot 1 above.
-    while (row.length < header.length) {
-      row.push("");
-    }
-    return row;
-  });
+  const rows = lastScheduleResult.map((entry) => [
+    entry.title, entry.date, entry.cinema, entry.time,
+    entry.categories, entry.country, entry.year, entry.length, entry.premiere,
+  ]);
 
   downloadTextFile("picked_movies.csv", buildCsv(header, rows));
 }
