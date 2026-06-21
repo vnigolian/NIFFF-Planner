@@ -198,10 +198,20 @@
         <h2 data-i18n="results_heading">Your schedule</h2>
         <p id="results-summary" class="panel-subtitle"></p>
       </div>
-      <button id="download-schedule" class="button button--secondary" type="button" disabled data-i18n="download_schedule">
-        Download picked movies
-      </button>
+      <span class="results-download-group">
+        <button id="download-schedule-csv" class="button button--secondary" type="button" disabled data-i18n="download_schedule_csv">
+          Download picked movies as CSV
+        </button>
+        <button id="download-schedule-pdf" class="button button--secondary" type="button" disabled data-i18n="download_schedule_pdf">
+          Download picked movies as PDF
+        </button>
+        <button id="highlight-official-pdf" class="button button--secondary" type="button" disabled data-i18n="highlight_official_pdf">
+          Highlight picked movies on official planning
+        </button>
+      </span>
     </div>
+
+    <p id="pdf-export-feedback" class="pdf-export-feedback" aria-live="polite"></p>
 
     <div id="warnings-block" class="warnings-block" hidden></div>
 

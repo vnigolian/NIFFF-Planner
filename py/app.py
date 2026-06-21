@@ -26,6 +26,18 @@ from planner_io import (
 
 MOVIES_CSV_PATH = "../data/movies.csv"
 
+# Unlike MOVIES_CSV_PATH (fetched via pyodide.http.open_url(), a real
+# HTTP relative URL resolved by the browser), these two are read by
+# fitz.open()/json.load() as VIRTUAL FILESYSTEM paths -- script.js
+# writes them as flat filenames (pyodide.FS.writeFile("GRILLE-...",
+# bytes), no directory prefix), matching the same convention already
+# used for the .py modules themselves. A "../data/..." path here would
+# need a real "data" directory node to exist in the virtual filesystem,
+# which nothing creates -- that mismatch caused a real ENOENT at runtime
+# before this was caught and fixed.
+OFFICIAL_PDF_PATH = "GRILLE-HORAIRE_NIFFF2026.pdf"
+PDF_LAYOUT_JSON_PATH = "pdf_layout.json"
+
 
 class Screening:
     def __init__(self, date: str, cinema: str, time: str):
@@ -263,4 +275,210 @@ def run_plan(
             }
             for prev_entry, cur_entry in result.tight_transition_warnings
         ],
+    }
+
+
+def _normalize_title_for_matching(title: str) -> str:
+    """Uppercases, strips a leading "CONF. " prefix (the official PDF
+    prefixes conference/talk entries this way; our own scraped catalog
+    doesn't), strips a leading ceremony prefix (the official PDF
+    combines the ceremony and the film into one block, e.g. "OPENING
+    CEREMONY + NIGHTBORN"; our own catalog splits this into two
+    separate, independently-pickable entries -- "Cérémonie + Nightborn"
+    and plain "Nightborn" -- see extract_programme_as_csv.py's ceremony-
+    split logic -- so BOTH of our split entries need to normalize down
+    to just the plain film title to match the PDF's single combined
+    block), and strips trailing ellipsis/punctuation -- normalizing both
+    sides enough that an exact-or-prefix comparison (see _titles_match())
+    can handle the official PDF's occasional mid-phrase truncation (e.g.
+    the chart shows "ALICE AU PAYS…" for the full title "Alice au pays
+    des merveilles")."""
+    text = title.strip().upper().rstrip(".\u2026 ")
+    if text.startswith("CONF. "):
+        text = text[len("CONF. ") :]
+    for ceremony_prefix in ("OPENING CEREMONY + ", "CLOSING CEREMONY + ", "CÉRÉMONIE + "):
+        if text.startswith(ceremony_prefix):
+            text = text[len(ceremony_prefix) :]
+            break
+    return text
+
+
+def _titles_match(normalized_schedule_title: str, normalized_pdf_title: str) -> bool:
+    """True if either normalized title is a prefix of the other -- the
+    official PDF truncates some longer titles with an ellipsis, and
+    after _normalize_title_for_matching() strips that ellipsis, what's
+    left is a genuine PREFIX of the real, full title (verified directly
+    against the real PDF: "ALICE AU PAYS" is a clean prefix of "ALICE AU
+    PAYS DES MERVEILLES", not a different wording or abbreviation)."""
+    if not normalized_schedule_title or not normalized_pdf_title:
+        return False
+    return normalized_schedule_title.startswith(
+        normalized_pdf_title
+    ) or normalized_pdf_title.startswith(normalized_schedule_title)
+
+
+def match_schedule_to_pdf_layout(schedule: list[dict]) -> dict:
+    """Matches each entry in `schedule` (the planner's picked-movies
+    list, same shape as run_plan()'s "schedule" field) against the
+    official PDF's precomputed layout (see ../data/pdf_layout.json,
+    produced by the standalone extract_pdf_layout.py script -- run that
+    script again, locally, whenever the official PDF changes).
+
+    Matching key: (normalized title, date) -- see
+    _normalize_title_for_matching() for why this isn't exact string
+    equality, and extract_pdf_layout.py's module docstring for why no
+    further disambiguation (e.g. by venue) is needed: checked directly
+    against the real PDF, no title repeats within the same day anywhere
+    in the document.
+
+    Returns {"matched": [...], "unmatched_titles": [...]}, where matched
+    entries are {"title", "date", "page", "x0", "y0", "x1", "y1"} (the
+    schedule entry's own title/date plus its PDF position), and
+    unmatched_titles lists any schedule entries that couldn't be found
+    in the layout at all (e.g. the official PDF doesn't cover that
+    movie, or its title differs more than the truncation-tolerant
+    normalization accounts for).
+    """
+    import json
+
+    with open(PDF_LAYOUT_JSON_PATH, encoding="utf-8") as f:
+        layout = json.load(f)
+
+    layout_by_date: dict[str, list[dict]] = {}
+    for entry in layout:
+        layout_by_date.setdefault(entry["date"], []).append(entry)
+
+    matched = []
+    unmatched_titles = []
+    for entry in schedule:
+        normalized_schedule_title = _normalize_title_for_matching(entry["title"])
+        candidates = layout_by_date.get(entry["date"], [])
+        layout_entry = next(
+            (
+                c
+                for c in candidates
+                if _titles_match(normalized_schedule_title, _normalize_title_for_matching(c["text"]))
+            ),
+            None,
+        )
+        if layout_entry is None:
+            unmatched_titles.append(entry["title"])
+            continue
+        matched.append(
+            {
+                "title": entry["title"],
+                "date": entry["date"],
+                "page": layout_entry["page"],
+                "x0": layout_entry["x0"],
+                "y0": layout_entry["y0"],
+                "x1": layout_entry["x1"],
+                "y1": layout_entry["y1"],
+            }
+        )
+
+    return {"matched": matched, "unmatched_titles": unmatched_titles}
+
+
+def build_picked_movies_pdf(schedule: list[dict]) -> bytes:
+    """Builds a plain PDF table of the picked schedule -- same fields and
+    order as the "download as CSV" export (Title, Date, Cinema, Time,
+    Categories, Country, Year, Length, Premiere), just rendered as a
+    readable document instead of a CSV file. Uses PyMuPDF, imported
+    HERE (not at module level) so loading app.py at boot doesn't require
+    fetching PyMuPDF -- it's only needed once this specific export is
+    actually used.
+    """
+    import fitz
+
+    columns = [
+        ("Title", 150),
+        ("Date", 45),
+        ("Cinema", 65),
+        ("Time", 38),
+        ("Categories", 130),
+        ("Country", 75),
+        ("Year", 38),
+        ("Length", 42),
+        ("Premiere", 90),
+    ]
+
+    doc = fitz.open()
+
+    def start_page():
+        page = doc.new_page(width=792, height=612)  # US Letter, landscape
+        page.insert_text((margin_x, header_y), "Picked Movies", fontsize=14, fontname="hebo")
+        x = margin_x
+        for label, width in columns:
+            page.insert_text((x, header_y + 24), label, fontsize=9, fontname="hebo")
+            x += width
+        page.draw_line(
+            (margin_x, header_y + 28), (margin_x + sum(w for _, w in columns), header_y + 28)
+        )
+        return page, header_y + 42
+
+    margin_x = 36
+    row_height = 16
+    header_y = 40
+
+    page, y = start_page()
+    for entry in schedule:
+        if y > 612 - 40:
+            page, y = start_page()
+
+        x = margin_x
+        values = [
+            entry["title"], entry["date"], entry["cinema"], entry["time"],
+            entry["categories"], entry["country"], entry["year"],
+            entry["length"], entry["premiere"],
+        ]
+        for value, (_label, width) in zip(values, columns):
+            text = str(value) if value else ""
+            # Truncate long values rather than overflow into the next
+            # column -- this is a simple fixed-width table, not a real
+            # layout engine.
+            max_chars = max(int(width / 4.5), 4)
+            if len(text) > max_chars:
+                text = text[: max_chars - 1] + "\u2026"
+            page.insert_text((x, y), text, fontsize=8, fontname="helv")
+            x += width
+        y += row_height
+
+    return doc.tobytes()
+
+
+def build_highlighted_official_pdf(schedule: list[dict]) -> dict:
+    """Draws a small mark next to each picked movie's title on the
+    official program-chart PDF, using the precomputed layout (see
+    match_schedule_to_pdf_layout()). Uses PyMuPDF, imported HERE (not at
+    module level) for the same lazy-loading reason as
+    build_picked_movies_pdf().
+
+    Returns {"pdf_bytes": bytes, "matched_count": int, "total_count":
+    int, "unmatched_titles": [...]} -- the caller (script.js) is
+    responsible for surfacing the matched/unmatched counts to the
+    person, since not every picked movie is guaranteed to be found (see
+    match_schedule_to_pdf_layout()'s docstring for why a match can
+    fail).
+    """
+    import fitz
+
+    match_result = match_schedule_to_pdf_layout(schedule)
+
+    doc = fitz.open(OFFICIAL_PDF_PATH)
+    for m in match_result["matched"]:
+        page = doc[m["page"]]
+        # A small red circle just to the left of the title's own
+        # bounding box -- positioned so it doesn't overlap the text
+        # itself, on either page (titles never start right at the
+        # grid's left edge, so there's always a little room to its
+        # left within the same row).
+        center_x = m["x0"] - 8
+        center_y = (m["y0"] + m["y1"]) / 2
+        page.draw_circle((center_x, center_y), radius=4, color=(0.8, 0.1, 0.1), fill=(0.8, 0.1, 0.1))
+
+    return {
+        "pdf_bytes": doc.tobytes(),
+        "matched_count": len(match_result["matched"]),
+        "total_count": len(schedule),
+        "unmatched_titles": match_result["unmatched_titles"],
     }

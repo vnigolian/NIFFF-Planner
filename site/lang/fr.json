@@ -68,7 +68,9 @@
   "results_summary": "Priorité totale: {total} · {selected}/{total_with_priority} films sélectionnés au programme ({rate} %) · {elapsed}s",
   "results_summary_with_stats": " · sur {n} simulations — min {min}, moyenne {mean}, max {max}",
   "results_summary_objective_note": " (choisi par l'objectif {objective}, pas nécessairement le plus élevé de ceux-ci)",
-  "download_schedule": "Télécharger le programme",
+  "download_schedule_csv": "Télécharger le programme en CSV",
+  "download_schedule_pdf": "Télécharger le programme en PDF",
+  "highlight_official_pdf": "Marquer les films sélectionnés sur le programme officiel",
 
   "warnings_heading": "Juste un peu serré:",
   "warnings_note": "ces séances bout-à-bout vous laissent très peu de temps pour vous déplacer.",

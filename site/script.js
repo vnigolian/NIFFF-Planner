@@ -31,7 +31,10 @@ const minBreakInput = document.getElementById("min-break-input");
 const cappedPriorityWarning = document.getElementById("capped-priority-warning");
 const resultsSection = document.getElementById("results-section");
 const resultsSummary = document.getElementById("results-summary");
-const downloadScheduleButton = document.getElementById("download-schedule");
+const downloadScheduleCsvButton = document.getElementById("download-schedule-csv");
+const downloadSchedulePdfButton = document.getElementById("download-schedule-pdf");
+const highlightOfficialPdfButton = document.getElementById("highlight-official-pdf");
+const pdfExportFeedback = document.getElementById("pdf-export-feedback");
 const warningsBlock = document.getElementById("warnings-block");
 const scheduleList = document.getElementById("schedule-list");
 const discardedList = document.getElementById("discarded-list");
@@ -228,7 +231,16 @@ function buildCsv(header, rows) {
 }
 
 function downloadTextFile(filename, text) {
-  const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
+  downloadBlob(filename, new Blob([text], { type: "text/csv;charset=utf-8" }));
+}
+
+function downloadBinaryFile(filename, bytes, mimeType) {
+  // `bytes` arrives from Pyodide as a Uint8Array (a Python `bytes`
+  // object converted via .toJs()) -- Blob accepts that directly.
+  downloadBlob(filename, new Blob([bytes], { type: mimeType }));
+}
+
+function downloadBlob(filename, blob) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -359,7 +371,7 @@ function applyUploadedPriorities(file) {
   reader.readAsText(file);
 }
 
-function downloadSchedule() {
+function downloadScheduleCsv() {
   if (lastScheduleResult.length === 0) {
     return;
   }
@@ -375,6 +387,124 @@ function downloadSchedule() {
   ]);
 
   downloadTextFile("picked_movies.csv", buildCsv(header, rows));
+}
+
+let pyMuPdfLoadPromise = null;
+
+async function ensurePyMuPdfLoaded() {
+  // PyMuPDF is NOT needed for normal use of the site (building a
+  // schedule, the CSV export) -- it's only fetched the first time
+  // someone actually uses one of the PDF-export buttons, so everyone
+  // else's page load stays exactly as fast as before this feature
+  // existed. Cached in a module-level promise so a second click (either
+  // PDF button) doesn't re-fetch/re-install it.
+  if (pyMuPdfLoadPromise == null) {
+    pyMuPdfLoadPromise = (async () => {
+      await pyodide.loadPackage("micropip");
+      const micropip = pyodide.pyimport("micropip");
+      await micropip.install("pymupdf");
+    })();
+  }
+  await pyMuPdfLoadPromise;
+}
+
+let officialPdfAssetsLoadPromise = null;
+
+async function ensureOfficialPdfAssetsLoaded() {
+  // build_highlighted_official_pdf() (unlike build_picked_movies_pdf())
+  // needs two extra files that, like the .py modules, must be fetched
+  // and written into Pyodide's virtual filesystem before Python can
+  // read them as local paths -- fitz.open() and plain open()/json.load()
+  // both expect a real local path, not a URL, unlike
+  // pyodide.http.open_url() (used elsewhere for movies.csv). Only
+  // fetched once, lazily, since most visits never need these at all.
+  //
+  // The fetch() URLs below are real HTTP paths relative to this page
+  // (site/index.html), so "../data/..." is correct there -- but the
+  // writeFile() DESTINATIONS are virtual-filesystem paths, a completely
+  // different namespace with no "data" directory node in it (nothing
+  // ever creates one) -- those must be flat filenames, matching the
+  // same convention already used for the .py modules. Mixing these two
+  // path spaces up caused a real ENOENT at runtime before this was
+  // caught and fixed; see OFFICIAL_PDF_PATH/PDF_LAYOUT_JSON_PATH in
+  // app.py for the Python side of this same fix.
+  if (officialPdfAssetsLoadPromise == null) {
+    officialPdfAssetsLoadPromise = (async () => {
+      const [pdfResponse, layoutResponse] = await Promise.all([
+        fetch(`../data/GRILLE-HORAIRE_NIFFF2026.pdf?v=${Date.now()}`, { cache: "no-store" }),
+        fetch(`../data/pdf_layout.json?v=${Date.now()}`, { cache: "no-store" }),
+      ]);
+      const pdfBytes = new Uint8Array(await pdfResponse.arrayBuffer());
+      const layoutText = await layoutResponse.text();
+      pyodide.FS.writeFile("GRILLE-HORAIRE_NIFFF2026.pdf", pdfBytes);
+      pyodide.FS.writeFile("pdf_layout.json", layoutText);
+    })();
+  }
+  await officialPdfAssetsLoadPromise;
+}
+
+async function downloadSchedulePdf() {
+  if (lastScheduleResult.length === 0) {
+    return;
+  }
+
+  pdfExportFeedback.textContent = t("pdf_export_loading");
+  try {
+    await ensurePyMuPdfLoaded();
+    pdfExportFeedback.textContent = t("pdf_export_building");
+
+    const buildPdf = pyodide.globals.get("build_picked_movies_pdf");
+    const pdfBytesPy = buildPdf(pyodide.toPy(lastScheduleResult));
+    const pdfBytes = pdfBytesPy.toJs();
+    pdfBytesPy.destroy();
+    buildPdf.destroy();
+
+    downloadBinaryFile("picked_movies.pdf", pdfBytes, "application/pdf");
+    pdfExportFeedback.textContent = "";
+  } catch (err) {
+    console.error(err);
+    pdfExportFeedback.textContent = t("pdf_export_error");
+  }
+}
+
+async function highlightOfficialPdf() {
+  if (lastScheduleResult.length === 0) {
+    return;
+  }
+
+  pdfExportFeedback.textContent = t("pdf_export_loading");
+  try {
+    await Promise.all([ensurePyMuPdfLoaded(), ensureOfficialPdfAssetsLoaded()]);
+    pdfExportFeedback.textContent = t("pdf_export_building");
+
+    const buildHighlight = pyodide.globals.get("build_highlighted_official_pdf");
+    const resultPy = buildHighlight(pyodide.toPy(lastScheduleResult));
+    const result = resultPy.toJs({ dict_converter: Object.fromEntries });
+    resultPy.destroy();
+    buildHighlight.destroy();
+
+    downloadBinaryFile(
+      "GRILLE-HORAIRE_NIFFF2026_highlighted.pdf",
+      result.pdf_bytes,
+      "application/pdf"
+    );
+
+    let summary = t("pdf_highlight_summary", {
+      matched: result.matched_count,
+      total: result.total_count,
+    });
+    const unmatchedCount = result.total_count - result.matched_count;
+    if (unmatchedCount > 0) {
+      summary += t("pdf_highlight_unmatched_note", {
+        unmatched: unmatchedCount,
+        titles: result.unmatched_titles.join(", "),
+      });
+    }
+    pdfExportFeedback.textContent = summary;
+  } catch (err) {
+    console.error(err);
+    pdfExportFeedback.textContent = t("pdf_export_error");
+  }
 }
 
 function formatCountry(country) {
@@ -678,7 +808,10 @@ function renderDiscarded(discarded) {
 function renderResult(result) {
   lastScheduleResult = result.schedule;
   lastRenderedResult = result;
-  downloadScheduleButton.disabled = result.schedule.length === 0;
+  const hasSchedule = result.schedule.length > 0;
+  downloadScheduleCsvButton.disabled = !hasSchedule;
+  downloadSchedulePdfButton.disabled = !hasSchedule;
+  highlightOfficialPdfButton.disabled = !hasSchedule;
 
   const successRate =
     result.n_movies_with_priority > 0
@@ -874,6 +1007,8 @@ import app
 movies_for_js = app.load_movies()
 festival_days_for_js = app.get_festival_days()
 run_plan = app.run_plan
+build_picked_movies_pdf = app.build_picked_movies_pdf
+build_highlighted_official_pdf = app.build_highlighted_official_pdf
   `);
   const tAfterPythonImport = performance.now();
   console.info(
@@ -928,7 +1063,9 @@ uploadPrioritiesInput.addEventListener("change", () => {
   }
   uploadPrioritiesInput.value = ""; // allow re-uploading the same filename later
 });
-downloadScheduleButton.addEventListener("click", downloadSchedule);
+downloadScheduleCsvButton.addEventListener("click", downloadScheduleCsv);
+downloadSchedulePdfButton.addEventListener("click", downloadSchedulePdf);
+highlightOfficialPdfButton.addEventListener("click", highlightOfficialPdf);
 
 boot().catch((err) => {
   console.error(err);
