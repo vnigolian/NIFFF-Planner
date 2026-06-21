@@ -16,12 +16,12 @@ The current text are automatically translated.
 
 ## Features
 
-This is a **minimal first slice**: load the movie list, set priorities and
+This is a **minimal implementation**: load the movie list, set priorities and
 availability, build a schedule, see what got cut and why. Scheduling
 works by running a fast random greedy assignment many times (however
 many "simulations" you ask for) and keeping the best result — there's no
 guarantee of finding the absolute best possible schedule, but each run
-is a fraction of a millisecond even at full festival scale, so running
+is quite fast even at full festival scale, so running
 hundreds or thousands of simulations is still possible, given enough time. 
 Although in practice, 1000 runs give good enough results.
 The page also shows the min/mean/max total priority across all simulations, so
@@ -59,6 +59,16 @@ Bulk-edit-by-category (beyond the free-text filter's "apply to filtered"
 button, which has its own "don't overwrite already-set priorities"
 checkbox) is intentionally not in this version yet.
 
+Once you've built a schedule, there are three ways to export it:
+- **Download picked movies as CSV** — same fields as before, instant.
+- **Download picked movies as PDF** — a plain table with the same
+  fields as the CSV, just as a readable document.
+- **Highlight picked movies on official planning** — marks each picked
+  movie directly on NIFFF's own official program-chart PDF.
+
+See **PDF exports** below for how the highlighting works and its
+known matching limitations.
+
 
 ## Translations
 
@@ -93,6 +103,51 @@ GitHub Pages serves the **repo root**, not the `site/` folder itself (see
 Deploying below).
 
 
+## PDF exports
+
+Three ways to export your picked schedule, from the results section:
+- **Download picked movies as CSV** — instant, no extra download.
+- **Download picked movies as PDF** — a plain table, same fields as
+  the CSV, just as a readable document.
+- **Highlight picked movies on official planning** — marks each picked
+  movie on NIFFF's own official program-chart PDF
+  (`data/GRILLE-HORAIRE_NIFFF2026.pdf`).
+
+The first one is instant. The second and third one aren't, the first time you use
+them in a session: it lazily fetches PyMuPDF (a real PDF library, needed
+for both reading positions and drawing marks) plus the official PDF
+itself and its precomputed layout — none of that is downloaded during
+normal page load, only once you actually click that specific button, so
+everyone else's experience is completely unaffected. After that first
+click, it's cached for the rest of the session.
+
+**Matching isn't always 100%.** The official PDF's titles don't always
+match our scraped catalog's exactly — truncation ("ALICE AU PAYS…" for
+a longer title), a "CONF. " prefix on talks, the ceremony films being
+one combined block on the chart but two separate pickable entries here
+(handled either way — whichever of the two you pick resolves to the
+same spot on the chart), and a handful of generic workshop/conference
+labels that genuinely can't be told apart from the chart alone (e.g.
+several numbered "Atelier cinéma et effets spéciaux" sessions all show
+up as one shared label). The highlight feature reports exactly how many
+picked movies it matched and lists any it couldn't, rather than
+silently dropping them.
+
+**If NIFFF updates the official PDF** (new year, corrected version):
+replace `data/GRILLE-HORAIRE_NIFFF2026.pdf` (same exact filename) and
+re-run the extraction script locally (`extract_pdf_layout.py`, kept
+outside this repo, same spirit as the movie-catalog scraper):
+```
+pip install pymupdf
+python3 extract_pdf_layout.py GRILLE-HORAIRE_NIFFF2026.pdf pdf_layout.json
+```
+Copy the resulting `pdf_layout.json` into `data/` alongside the new PDF.
+It prints a warning if the new PDF ever has the same movie title appear
+twice on the same day (the one case the current matching logic can't
+disambiguate) — if that happens, the matching key would need to expand
+beyond (title, date), which it doesn't currently do.
+
+
 ## Repo layout
 
 ```
@@ -116,10 +171,24 @@ site/              What GitHub Pages actually serves (see Deploying below)
                     less-resourced language)
 data/
   movies.csv       This year's scraped programme
+  GRILLE-HORAIRE_NIFFF2026.pdf
+                    The official program-chart PDF, straight from
+                    nifff.ch -- used by the "highlight picked movies on
+                    official planning" export. Keep this EXACT filename
+                    if you replace it with a newer version (see "PDF
+                    exports" above).
+  pdf_layout.json  Precomputed text positions from the PDF above (which
+                    movie title sits where) -- produced by
+                    extract_pdf_layout.py, NOT regenerated in the
+                    browser (see "PDF exports" above for why).
 py/
   app.py           The only Python module that knows it's in a browser:
                     fetches movies.csv, exposes load_movies()/run_plan()/
-                    get_festival_days() for script.js to call
+                    get_festival_days() for script.js to call. Also has
+                    the PDF-export functions (build_picked_movies_pdf,
+                    build_highlighted_official_pdf) -- these import
+                    PyMuPDF INSIDE the function, not at module level, so
+                    loading app.py at normal boot never requires it.
   planner_core.py  Pure combinatorial solvers: solve() (fast, random,
                     always-feasible but not optimal), solve_best_of_n()
                     (runs solve() many times, keeps the best -- a cheap
@@ -131,6 +200,11 @@ py/
                     bipartite matching)
   planner_io.py    Glue: CSV-shaped data <-> the solver's data model, time
                     handling, the discarded-movies report
+extract_pdf_layout.py
+                    Standalone script (lives OUTSIDE site/ and data/,
+                    same spirit as the movie-catalog scraper) -- run
+                    this yourself, locally, whenever the official PDF
+                    changes. See "PDF exports" above.
 ```
 
 ## Running it locally
@@ -152,7 +226,7 @@ then open `http://localhost:8000/site/`.
 commit it. The site itself never scrapes anything; it only ever reads this
 file.
 
-## Known limitations (intentional, for this slice)
+## Known limitations (intentional, for this implementation)
 
 - **No true optimum guarantee.** "Simulations" is a heuristic (best-of-N
   random greedy assignment) — running more simulations tends to improve
@@ -165,7 +239,8 @@ file.
   repaint or respond to clicks — this is a known Pyodide tradeoff (see
   their docs on Web Workers), not a bug. In practice this is brief even
   at thousands of simulations, since each run is sub-millisecond.
-
+- **PDF highlighting can't match every picked movie.** See "PDF exports"
+  above for why and how this is reported rather than hidden.
 
 
 
