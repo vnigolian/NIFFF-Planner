@@ -830,11 +830,14 @@ function syncTableHeightToAvailabilityPanel() {
 }
 
 async function boot() {
+  const t0 = performance.now();
   await setLanguage(getStoredLanguage());
   languageSelect.value = getStoredLanguage();
 
   setStatus(t("status_booting"), 8);
   pyodide = await loadPyodide();
+  const tAfterLoadPyodide = performance.now();
+  console.info(`[boot] loadPyodide(): ${(tAfterLoadPyodide - t0).toFixed(0)}ms`);
 
   setStatus(t("status_loading_planner"), 40);
 
@@ -847,13 +850,23 @@ async function boot() {
   // produces confusing errors that look like a code bug rather than a
   // caching issue -- this has bitten us more than once, so don't rely
   // on the browser's default caching behavior here.
+  //
+  // Fetched CONCURRENTLY rather than one at a time: nothing depends on
+  // these being WRITTEN to the virtual filesystem in any particular
+  // order (only IMPORT order matters later, via the single `import app`
+  // statement below), so there's no reason to pay for 4 sequential
+  // round trips when one parallel batch does the same job faster.
   const cacheBuster = Date.now();
   const pyModules = ["clique_bound.py", "planner_core.py", "planner_io.py", "app.py"];
-  for (const filename of pyModules) {
-    const response = await fetch(`../py/${filename}?v=${cacheBuster}`, { cache: "no-store" });
-    const source = await response.text();
-    pyodide.FS.writeFile(filename, source);
-  }
+  await Promise.all(
+    pyModules.map(async (filename) => {
+      const response = await fetch(`../py/${filename}?v=${cacheBuster}`, { cache: "no-store" });
+      const source = await response.text();
+      pyodide.FS.writeFile(filename, source);
+    })
+  );
+  const tAfterPyFetch = performance.now();
+  console.info(`[boot] fetch .py modules: ${(tAfterPyFetch - tAfterLoadPyodide).toFixed(0)}ms`);
 
   setStatus(t("status_reading_programme"), 70);
   await pyodide.runPythonAsync(`
@@ -862,6 +875,10 @@ movies_for_js = app.load_movies()
 festival_days_for_js = app.get_festival_days()
 run_plan = app.run_plan
   `);
+  const tAfterPythonImport = performance.now();
+  console.info(
+    `[boot] import app + load_movies(): ${(tAfterPythonImport - tAfterPyFetch).toFixed(0)}ms`
+  );
 
   const moviesPy = pyodide.globals.get("movies_for_js");
   movies = moviesPy.toJs({ dict_converter: Object.fromEntries });
@@ -874,6 +891,8 @@ run_plan = app.run_plan
   setStatus(t("status_loaded", { count: movies.length }), 100);
   statusSection.hidden = true;
   moviesSection.hidden = false;
+
+  console.info(`[boot] TOTAL: ${(performance.now() - t0).toFixed(0)}ms`);
 
   renderAvailabilityDays(festivalDays);
   renderMoviesTable(movies);
