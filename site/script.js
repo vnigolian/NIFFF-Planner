@@ -38,7 +38,12 @@ const pdfExportFeedback = document.getElementById("pdf-export-feedback");
 const warningsBlock = document.getElementById("warnings-block");
 const scheduleList = document.getElementById("schedule-list");
 const discardedList = document.getElementById("discarded-list");
+const statsPerDayChart = document.getElementById("stats-per-day-chart");
+const statsCategoryPie = document.getElementById("stats-category-pie");
+const statsTableCatalog = document.getElementById("stats-table-catalog");
+const statsTableRanked = document.getElementById("stats-table-ranked");
 const languageSelect = document.getElementById("language-select");
+const adBanner = document.getElementById("ad-banner");
 
 let pyodide = null;
 let movies = []; // [{title, categories, country, year, length, premiere, screenings}]
@@ -805,6 +810,147 @@ function renderDiscarded(discarded) {
   }
 }
 
+// A small, fixed palette cycled by category index -- doesn't need to be
+// meaningful or stable across different runs (categories can appear in
+// a different order each time, depending on what got selected), just
+// visually distinct enough to tell pie slices apart.
+const STATS_CATEGORY_COLORS = [
+  "#ff4d2e", "#ffd23f", "#2a9d8f", "#264653", "#e76f51",
+  "#8338ec", "#3a86ff", "#fb5607", "#06d6a0", "#118ab2",
+];
+
+function renderStatsPerDayChart(perDayCounts, perDayAverage) {
+  statsPerDayChart.innerHTML = "";
+  if (perDayCounts.length === 0) {
+    return;
+  }
+
+  const width = 700;
+  const height = 220;
+  const marginBottom = 36;
+  const marginTop = 16;
+  const barAreaHeight = height - marginBottom - marginTop;
+  const barWidth = width / perDayCounts.length;
+  const maxCount = Math.max(1, ...perDayCounts.map((d) => d.count)); // avoid div-by-zero when every day is 0
+
+  const bars = perDayCounts
+    .map((d, i) => {
+      const barHeight = (d.count / maxCount) * barAreaHeight;
+      const x = i * barWidth;
+      const y = marginTop + (barAreaHeight - barHeight);
+      return `
+        <rect x="${x + barWidth * 0.12}" y="${y}" width="${barWidth * 0.76}" height="${barHeight}"
+              fill="var(--accent)" rx="2" />
+        <text x="${x + barWidth / 2}" y="${y - 4}" text-anchor="middle"
+              font-size="11" font-family="var(--font-mono)" fill="var(--ink)">${d.count}</text>
+        <text x="${x + barWidth / 2}" y="${height - marginBottom + 16}" text-anchor="middle"
+              font-size="10" font-family="var(--font-mono)" fill="rgba(20,21,26,0.6)">${d.date}</text>
+      `;
+    })
+    .join("");
+
+  const averageY = marginTop + (barAreaHeight - (perDayAverage / maxCount) * barAreaHeight);
+
+  statsPerDayChart.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${t("stats_per_day_heading")}">
+      ${bars}
+      <line x1="0" y1="${averageY}" x2="${width}" y2="${averageY}"
+            stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="5,4" />
+      <text x="${width - 4}" y="${averageY - 6}" text-anchor="end"
+            font-size="11" font-family="var(--font-mono)" fill="var(--ink)">${t("stats_per_day_average", { average: perDayAverage })}</text>
+    </svg>
+  `;
+}
+
+function renderStatsCategoryPie(categoryStatsRanked) {
+  statsCategoryPie.innerHTML = "";
+  const slices = categoryStatsRanked.filter((c) => c.selected > 0);
+  const total = slices.reduce((sum, c) => sum + c.selected, 0);
+  if (total === 0) {
+    return;
+  }
+
+  const size = 260;
+  const radius = 100;
+  const cx = radius + 10;
+  const cy = size / 2;
+
+  let angleStart = -Math.PI / 2; // start at 12 o'clock
+  const paths = slices
+    .map((c, i) => {
+      const fraction = c.selected / total;
+      const angleEnd = angleStart + fraction * 2 * Math.PI;
+      const x1 = cx + radius * Math.cos(angleStart);
+      const y1 = cy + radius * Math.sin(angleStart);
+      const x2 = cx + radius * Math.cos(angleEnd);
+      const y2 = cy + radius * Math.sin(angleEnd);
+      const largeArc = angleEnd - angleStart > Math.PI ? 1 : 0;
+      const color = STATS_CATEGORY_COLORS[i % STATS_CATEGORY_COLORS.length];
+      const path = `M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+      angleStart = angleEnd;
+      return `<path d="${path}" fill="${color}" stroke="var(--paper)" stroke-width="1.5"><title>${c.category}: ${c.selected}</title></path>`;
+    })
+    .join("");
+
+  const legend = slices
+    .map((c, i) => {
+      const color = STATS_CATEGORY_COLORS[i % STATS_CATEGORY_COLORS.length];
+      return `
+        <span class="stats-pie-legend__item">
+          <span class="stats-pie-legend__swatch" style="background:${color}"></span>
+          ${c.category} (${c.selected})
+        </span>
+      `;
+    })
+    .join("");
+
+  statsCategoryPie.innerHTML = `
+    <div class="stats-pie-wrap">
+      <svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="${t("stats_pie_heading")}">
+        ${paths}
+      </svg>
+      <div class="stats-pie-legend">${legend}</div>
+    </div>
+  `;
+}
+
+function renderStatsTable(tableEl, rows) {
+  if (rows.length === 0) {
+    tableEl.innerHTML = `<tbody><tr><td class="stats-table__empty">${t("stats_table_empty")}</td></tr></tbody>`;
+    return;
+  }
+  const bodyRows = rows
+    .map(
+      (r) => `
+        <tr>
+          <td>${r.category}</td>
+          <td class="stats-table__num">${r.selected}</td>
+          <td class="stats-table__num">${r.total}</td>
+          <td class="stats-table__num">${r.percent}%</td>
+        </tr>
+      `
+    )
+    .join("");
+  tableEl.innerHTML = `
+    <thead>
+      <tr>
+        <th scope="col">${t("table_header_category")}</th>
+        <th scope="col">${t("stats_table_selected")}</th>
+        <th scope="col">${t("stats_table_total")}</th>
+        <th scope="col">${t("stats_table_percent")}</th>
+      </tr>
+    </thead>
+    <tbody>${bodyRows}</tbody>
+  `;
+}
+
+function renderStatistics(statistics) {
+  renderStatsPerDayChart(statistics.per_day_counts, statistics.per_day_average);
+  renderStatsCategoryPie(statistics.category_stats_ranked);
+  renderStatsTable(statsTableCatalog, statistics.category_stats_catalog);
+  renderStatsTable(statsTableRanked, statistics.category_stats_ranked);
+}
+
 function renderResult(result) {
   lastScheduleResult = result.schedule;
   lastRenderedResult = result;
@@ -858,6 +1004,7 @@ function renderResult(result) {
   renderWarnings(result.tight_transition_warnings);
   renderSchedule(result.schedule);
   renderDiscarded(result.discarded);
+  renderStatistics(result.statistics);
 
   resultsSection.hidden = false;
   resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1071,6 +1218,51 @@ uploadPrioritiesInput.addEventListener("change", () => {
 downloadScheduleCsvButton.addEventListener("click", downloadScheduleCsv);
 downloadSchedulePdfButton.addEventListener("click", downloadSchedulePdf);
 highlightOfficialPdfButton.addEventListener("click", highlightOfficialPdf);
+
+const AD_CYCLE_INTERVAL_MS = 10000;
+
+async function initAdBanner() {
+  // Purely decorative, has nothing to do with the planner itself -- runs
+  // independently of boot()/Pyodide, so it shows up immediately and
+  // never waits on (or blocks) anything movie-related.
+  //
+  // Cycling vs "static": there's deliberately only ONE mechanism here
+  // (a recurring interval with a RANDOM starting index), not two
+  // separate code paths for "cycle" and "static" -- setting
+  // AD_CYCLE_INTERVAL_MS to something very large (e.g. larger than
+  // anyone would realistically keep the tab open) gets you the
+  // "effectively static, but still randomized per page load" behavior
+  // for free, with no extra branching.
+  try {
+    const response = await fetch(`ads/manifest.json?v=${Date.now()}`, { cache: "no-store" });
+    const manifest = await response.json();
+    const images = manifest.images || [];
+    if (images.length === 0) {
+      adBanner.hidden = true;
+      return;
+    }
+
+    let index = Math.floor(Math.random() * images.length);
+    const showCurrent = () => {
+      adBanner.src = `ads/${images[index]}`;
+    };
+    showCurrent();
+
+    if (images.length > 1) {
+      setInterval(() => {
+        index = (index + 1) % images.length;
+        showCurrent();
+      }, AD_CYCLE_INTERVAL_MS);
+    }
+  } catch (err) {
+    // No manifest, empty ads/ folder, or a bad fetch -- just hide the
+    // banner rather than show a broken image icon.
+    console.warn("Ad banner not loaded:", err);
+    adBanner.hidden = true;
+  }
+}
+
+initAdBanner();
 
 boot().catch((err) => {
   console.error(err);

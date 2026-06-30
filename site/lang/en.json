@@ -94,6 +94,17 @@
   "discarded_reason_outscored": "{date} {time} — free, but outscored by the rest of the schedule",
   "discarded_reason_blocked": "{date} {time} — clashes with {blockers}",
 
+  "statistics_heading": "Statistics",
+  "stats_per_day_heading": "Movies per day",
+  "stats_per_day_average": "average: {average}",
+  "stats_pie_heading": "Selected movies by category",
+  "stats_table_catalog_heading": "Coverage of the full catalog, by category",
+  "stats_table_ranked_heading": "Coverage of your ranked movies, by category",
+  "stats_table_selected": "Selected",
+  "stats_table_total": "Total",
+  "stats_table_percent": "%",
+  "stats_table_empty": "Nothing to show yet.",
+
   "error_generic": "Something went wrong while building the schedule. Check the console for details.",
 
   "footer_before_link": "Runs entirely in your browser via",

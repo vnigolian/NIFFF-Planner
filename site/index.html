@@ -23,7 +23,10 @@
         </select>
       </span>
     </div>
-    <h1 class="site-title">NIFFF<span class="site-title__accent">PLANNER</span></h1>
+    <div class="site-title-row">
+      <h1 class="site-title">NIFFF<span class="site-title__accent">PLANNER</span></h1>
+      <img id="ad-banner" class="ad-banner" alt="" />
+    </div>
     <p class="site-tagline" data-i18n="header_tagline">Rank what you want to see. Let the simulator run itself.</p>
   </div>
 </header>
@@ -227,6 +230,24 @@
     <h3 class="subsection-title" data-i18n="discarded_heading">Left on the table</h3>
     <p class="subsection-note" data-i18n="discarded_note">Highest priority first. Bump a priority and rebuild to try to save it.</p>
     <ol id="discarded-list" class="discard-list"></ol>
+
+    <h3 class="subsection-title" data-i18n="statistics_heading">Statistics</h3>
+
+    <h4 class="stats-subheading" data-i18n="stats_per_day_heading">Movies per day</h4>
+    <div id="stats-per-day-chart" class="stats-chart"></div>
+
+    <h4 class="stats-subheading" data-i18n="stats_pie_heading">Selected movies by category</h4>
+    <div id="stats-category-pie" class="stats-chart"></div>
+
+    <h4 class="stats-subheading" data-i18n="stats_table_catalog_heading">Coverage of the full catalog, by category</h4>
+    <div class="table-wrap table-wrap--stats">
+      <table id="stats-table-catalog" class="movies-table stats-table"></table>
+    </div>
+
+    <h4 class="stats-subheading" data-i18n="stats_table_ranked_heading">Coverage of your ranked movies, by category</h4>
+    <div class="table-wrap table-wrap--stats">
+      <table id="stats-table-ranked" class="movies-table stats-table"></table>
+    </div>
   </section>
 
 </main>

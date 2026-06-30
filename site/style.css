@@ -90,6 +90,23 @@ a {
   cursor: pointer;
 }
 
+.site-title-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.ad-banner {
+  width: 150px;
+  height: 100px;
+  object-fit: cover;
+  border: 1px solid var(--line-on-dark);
+  border-radius: 2px;
+  background: var(--ink-soft);
+  flex-shrink: 0;
+}
+
 .site-title {
   margin: 0;
   font-family: var(--font-display);
@@ -276,6 +293,79 @@ main {
 .subsection-title--compact {
   margin-top: 0;
   font-size: 1rem;
+}
+
+.stats-subheading {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.82rem;
+  color: rgba(20, 21, 26, 0.6);
+  margin: 1.5rem 0 0.5rem;
+}
+
+.stats-chart {
+  background: var(--paper-bright);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0.75rem;
+}
+
+.stats-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.stats-pie-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.stats-pie-wrap svg {
+  width: 260px;
+  flex-shrink: 0;
+}
+
+.stats-pie-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.stats-pie-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stats-pie-legend__swatch {
+  display: inline-block;
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.table-wrap--stats {
+  flex: none;
+  min-height: auto;
+  max-height: 18rem;
+  margin-bottom: 0.5rem;
+}
+
+.stats-table__num {
+  text-align: right;
+  font-family: var(--font-mono);
+}
+
+.stats-table__empty {
+  padding: 0.75rem;
+  color: rgba(20, 21, 26, 0.55);
+  font-size: 0.85rem;
 }
 
 .availability-days {

@@ -139,6 +139,103 @@ UNAVAILABLE_BEGIN = "05:00"
 UNAVAILABLE_END = "05:01"
 
 
+def _split_categories(categories: str) -> list[str]:
+    """A movie's `categories` field is a comma-separated free-text
+    string (e.g. "International Competition, Ceremonies") -- a movie can
+    genuinely belong to more than one category (confirmed against the
+    real catalog: 8 of 137 movies do). Each category is counted
+    independently in the statistics below, so the SUM of all per-
+    category counts can exceed the total number of movies -- this is
+    intentional, not a bug, matching how the rest of the site already
+    treats this field as free text rather than a single enum."""
+    return [c.strip() for c in categories.split(",") if c.strip()]
+
+
+def _build_statistics(
+    schedule: list[dict],
+    priorities: dict[str, int],
+    movies_by_title: dict,
+    festival_days: list[dict],
+) -> dict:
+    """Computes the data behind the results page's "Statistics" section:
+    a per-day selected-movie count (for the histogram), and two
+    per-category selected/total breakdowns -- one against the WHOLE
+    catalog, one against only the movies the person actually ranked
+    (priority > 0), with categories that got zero selections omitted
+    from the second one (there's no point listing "Category X: 0/0" for
+    something the person never engaged with at all).
+    """
+    # --- Per-day counts, INCLUDING days with zero selected movies (a
+    # day nobody picked anything for should still show as a zero bar,
+    # not be silently missing from the histogram). ---
+    counts_by_date = {day["date"]: 0 for day in festival_days}
+    for entry in schedule:
+        counts_by_date[entry["date"]] = counts_by_date.get(entry["date"], 0) + 1
+    per_day_counts = [
+        {"date": day["date"], "count": counts_by_date[day["date"]]} for day in festival_days
+    ]
+    per_day_average = (
+        sum(d["count"] for d in per_day_counts) / len(per_day_counts) if per_day_counts else 0.0
+    )
+
+    # --- Per-category breakdowns. ---
+    selected_titles = {entry["title"] for entry in schedule}
+    ranked_titles = {title for title, p in priorities.items() if p > 0}
+
+    selected_count_by_category: dict[str, int] = {}
+    ranked_count_by_category: dict[str, int] = {}
+    catalog_count_by_category: dict[str, int] = {}
+
+    for title, movie in movies_by_title.items():
+        for category in _split_categories(movie.categories):
+            catalog_count_by_category[category] = catalog_count_by_category.get(category, 0) + 1
+            if title in ranked_titles:
+                ranked_count_by_category[category] = ranked_count_by_category.get(category, 0) + 1
+            if title in selected_titles:
+                selected_count_by_category[category] = (
+                    selected_count_by_category.get(category, 0) + 1
+                )
+
+    category_stats_catalog = sorted(
+        (
+            {
+                "category": category,
+                "selected": selected_count_by_category.get(category, 0),
+                "total": total,
+                "percent": round(100 * selected_count_by_category.get(category, 0) / total, 1),
+            }
+            for category, total in catalog_count_by_category.items()
+        ),
+        key=lambda row: row["selected"],
+        reverse=True,
+    )
+
+    category_stats_ranked = sorted(
+        (
+            {
+                "category": category,
+                "selected": selected_count_by_category.get(category, 0),
+                "total": ranked_count_by_category.get(category, 0),
+                "percent": round(
+                    100 * selected_count_by_category.get(category, 0) / ranked_count_by_category[category],
+                    1,
+                ),
+            }
+            for category in ranked_count_by_category
+            if selected_count_by_category.get(category, 0) > 0
+        ),
+        key=lambda row: row["selected"],
+        reverse=True,
+    )
+
+    return {
+        "per_day_counts": per_day_counts,
+        "per_day_average": round(per_day_average, 2),
+        "category_stats_catalog": category_stats_catalog,
+        "category_stats_ranked": category_stats_ranked,
+    }
+
+
 def run_plan(
     priorities: dict,
     availability_rows: list,
@@ -209,6 +306,16 @@ def run_plan(
     elapsed_seconds = time.time() - started_at
 
     movies_by_title = {m.title: m for m in _movies_cache}
+    festival_days = get_festival_days()
+    statistics = _build_statistics(
+        [
+            {"title": entry.movie.title, "date": entry.screening.date}
+            for entry in result.schedule
+        ],
+        clean_priorities,
+        movies_by_title,
+        festival_days,
+    )
 
     return {
         "algorithm_used": algorithm,
@@ -221,6 +328,7 @@ def run_plan(
         "total_priority": result.total_priority,
         "n_movies_with_priority": result.n_movies_with_priority,
         "n_movies_selected": result.n_movies_selected,
+        "statistics": statistics,
         "schedule": [
             {
                 "title": entry.movie.title,

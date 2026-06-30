@@ -12,7 +12,8 @@ type leaves your machine, and there's no server involved at all.
 
 Feel free to make suggestions using the Issues system, or directly with PRs.
 A very appreciated improvement would be for some native speakers to provide better translations for Italian, German and Rumantsch.
-The current text are automatically translated.
+The current versions were automatically translated.
+I'm also looking for a native Bärndütsch speaker to add some extra flair to the whole thing (other dialects are also welcome).
 
 ## Features
 

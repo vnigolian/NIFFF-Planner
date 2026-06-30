@@ -7,6 +7,10 @@
 *.o
 *.obj
 
+#python stuff
+*.venv*
+venv*
+
 # Precompiled Headers
 *.gch
 *.pch
