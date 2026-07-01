@@ -39,9 +39,9 @@ const warningsBlock = document.getElementById("warnings-block");
 const scheduleList = document.getElementById("schedule-list");
 const discardedList = document.getElementById("discarded-list");
 const statsPerDayChart = document.getElementById("stats-per-day-chart");
+const statsHistogramChart = document.getElementById("stats-histogram-chart");
 const statsCategoryPie = document.getElementById("stats-category-pie");
-const statsTableCatalog = document.getElementById("stats-table-catalog");
-const statsTableRanked = document.getElementById("stats-table-ranked");
+const statsTableMerged = document.getElementById("stats-table-merged");
 const languageSelect = document.getElementById("language-select");
 const adBanner = document.getElementById("ad-banner");
 
@@ -862,23 +862,26 @@ function renderStatsPerDayChart(perDayCounts, perDayAverage) {
   `;
 }
 
-function renderStatsCategoryPie(categoryStatsRanked) {
+function renderStatsCategoryPie(categoryStatsRows) {
   statsCategoryPie.innerHTML = "";
-  const slices = categoryStatsRanked.filter((c) => c.selected > 0);
-  const total = slices.reduce((sum, c) => sum + c.selected, 0);
+  // Pie shows selected movies by category -- use catalog_selected since
+  // that's always present for every category, and filter to categories
+  // where at least one movie was actually selected.
+  const slices = categoryStatsRows.filter((c) => c.catalog_selected > 0);
+  const total = slices.reduce((sum, c) => sum + c.catalog_selected, 0);
   if (total === 0) {
     return;
   }
 
-  const size = 260;
-  const radius = 100;
+  const size = 320;
+  const radius = 130;
   const cx = radius + 10;
   const cy = size / 2;
 
   let angleStart = -Math.PI / 2; // start at 12 o'clock
   const paths = slices
     .map((c, i) => {
-      const fraction = c.selected / total;
+      const fraction = c.catalog_selected / total;
       const angleEnd = angleStart + fraction * 2 * Math.PI;
       const x1 = cx + radius * Math.cos(angleStart);
       const y1 = cy + radius * Math.sin(angleStart);
@@ -888,7 +891,7 @@ function renderStatsCategoryPie(categoryStatsRanked) {
       const color = STATS_CATEGORY_COLORS[i % STATS_CATEGORY_COLORS.length];
       const path = `M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
       angleStart = angleEnd;
-      return `<path d="${path}" fill="${color}" stroke="var(--paper)" stroke-width="1.5"><title>${c.category}: ${c.selected}</title></path>`;
+      return `<path d="${path}" fill="${color}" stroke="var(--paper)" stroke-width="1.5"><title>${c.category}: ${c.catalog_selected}</title></path>`;
     })
     .join("");
 
@@ -898,7 +901,7 @@ function renderStatsCategoryPie(categoryStatsRanked) {
       return `
         <span class="stats-pie-legend__item">
           <span class="stats-pie-legend__swatch" style="background:${color}"></span>
-          ${c.category} (${c.selected})
+          ${c.category} (${c.catalog_selected})
         </span>
       `;
     })
@@ -914,30 +917,77 @@ function renderStatsCategoryPie(categoryStatsRanked) {
   `;
 }
 
-function renderStatsTable(tableEl, rows) {
-  if (rows.length === 0) {
-    tableEl.innerHTML = `<tbody><tr><td class="stats-table__empty">${t("stats_table_empty")}</td></tr></tbody>`;
+function renderStatsHistogramChart(perDayHistogram) {
+  statsHistogramChart.innerHTML = "";
+  if (perDayHistogram.length === 0) {
     return;
   }
-  const bodyRows = rows
-    .map(
-      (r) => `
-        <tr>
-          <td>${r.category}</td>
-          <td class="stats-table__num">${r.selected}</td>
-          <td class="stats-table__num">${r.total}</td>
-          <td class="stats-table__num">${r.percent}%</td>
-        </tr>
-      `
-    )
+
+  const width = 700;
+  const height = 220;
+  const marginBottom = 28;
+  const marginTop = 16;
+  const barAreaHeight = height - marginBottom - marginTop;
+  const barWidth = width / perDayHistogram.length;
+  const maxDays = Math.max(1, ...perDayHistogram.map((h) => h.n_days)); // avoid div-by-zero
+
+  const bars = perDayHistogram
+    .map((h, i) => {
+      const barHeight = (h.n_days / maxDays) * barAreaHeight;
+      const x = i * barWidth;
+      const y = marginTop + (barAreaHeight - barHeight);
+      return `
+        <rect x="${x + barWidth * 0.12}" y="${y}" width="${barWidth * 0.76}" height="${barHeight}"
+              fill="var(--accent)" rx="2" />
+        <text x="${x + barWidth / 2}" y="${y - 4}" text-anchor="middle"
+              font-size="11" font-family="var(--font-mono)" fill="var(--ink)">${h.n_days}</text>
+        <text x="${x + barWidth / 2}" y="${height - marginBottom + 16}" text-anchor="middle"
+              font-size="10" font-family="var(--font-mono)" fill="rgba(20,21,26,0.6)">${h.n_movies}</text>
+      `;
+    })
     .join("");
-  tableEl.innerHTML = `
+
+  statsHistogramChart.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${t("stats_histogram_heading")}">
+      ${bars}
+    </svg>
+  `;
+}
+
+function renderStatsMergedTable(rows) {
+  if (rows.length === 0) {
+    statsTableMerged.innerHTML = `<tbody><tr><td colspan="7" class="stats-table__empty">${t("stats_table_empty")}</td></tr></tbody>`;
+    return;
+  }
+
+  const cell = (val) => val === null || val === undefined
+    ? `<td class="stats-table__num"></td>`
+    : `<td class="stats-table__num">${val}</td>`;
+
+  const bodyRows = rows
+    .map((r) => `
+      <tr>
+        <td>${r.category}</td>
+        ${cell(r.catalog_selected)}
+        ${cell(r.catalog_total)}
+        ${cell(r.catalog_percent !== null && r.catalog_percent !== undefined ? r.catalog_percent + "%" : null)}
+        ${cell(r.ranked_selected)}
+        ${cell(r.ranked_total)}
+        ${cell(r.ranked_percent !== null && r.ranked_percent !== undefined ? r.ranked_percent + "%" : null)}
+      </tr>
+    `)
+    .join("");
+
+  statsTableMerged.innerHTML = `
     <thead>
       <tr>
         <th scope="col">${t("table_header_category")}</th>
-        <th scope="col">${t("stats_table_selected")}</th>
-        <th scope="col">${t("stats_table_total")}</th>
-        <th scope="col">${t("stats_table_percent")}</th>
+        <th scope="col" class="stats-table__group-header"><span class="stats-table__group-label">${t("stats_table_group_catalog")}</span>${t("stats_table_selected")}</th>
+        <th scope="col" class="stats-table__group-header"><span class="stats-table__group-label">&nbsp;</span>${t("stats_table_total")}</th>
+        <th scope="col" class="stats-table__group-header"><span class="stats-table__group-label">&nbsp;</span>${t("stats_table_percent")}</th>
+        <th scope="col" class="stats-table__group-header stats-table__group-start"><span class="stats-table__group-label">${t("stats_table_group_ranked")}</span>${t("stats_table_selected")}</th>
+        <th scope="col" class="stats-table__group-header"><span class="stats-table__group-label">&nbsp;</span>${t("stats_table_total")}</th>
+        <th scope="col" class="stats-table__group-header"><span class="stats-table__group-label">&nbsp;</span>${t("stats_table_percent")}</th>
       </tr>
     </thead>
     <tbody>${bodyRows}</tbody>
@@ -945,10 +995,10 @@ function renderStatsTable(tableEl, rows) {
 }
 
 function renderStatistics(statistics) {
+  renderStatsHistogramChart(statistics.per_day_histogram);
   renderStatsPerDayChart(statistics.per_day_counts, statistics.per_day_average);
-  renderStatsCategoryPie(statistics.category_stats_ranked);
-  renderStatsTable(statsTableCatalog, statistics.category_stats_catalog);
-  renderStatsTable(statsTableRanked, statistics.category_stats_ranked);
+  renderStatsCategoryPie(statistics.category_stats_rows);
+  renderStatsMergedTable(statistics.category_stats_rows);
 }
 
 function renderResult(result) {

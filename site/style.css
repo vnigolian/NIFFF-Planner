@@ -304,6 +304,71 @@ main {
   margin: 1.5rem 0 0.5rem;
 }
 
+.stats-top-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.stats-top-left,
+.stats-top-right {
+  min-width: 0;
+}
+
+.stats-top-left .stats-subheading,
+.stats-top-right .stats-subheading {
+  margin-top: 0;
+}
+
+.stats-top-right .stats-subheading + .stats-chart {
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 700px) {
+  .stats-top-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.stats-table--merged {
+  width: 100%;
+}
+
+.stats-table--merged th,
+.stats-table--merged td {
+  white-space: nowrap;
+}
+
+/* Category name column: allow wrapping and give it breathing room */
+.stats-table--merged td:first-child,
+.stats-table--merged th:first-child {
+  white-space: normal;
+  min-width: 12rem;
+}
+
+/* Two-line column headers: group label stacked above sub-column label,
+   each directly over its own data column so there's zero ambiguity. */
+.stats-table__group-header {
+  vertical-align: bottom;
+  line-height: 1.2;
+}
+
+.stats-table__group-label {
+  display: block;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(20, 21, 26, 0.45);
+  margin-bottom: 0.15rem;
+}
+
+/* Visual left border to separate the two groups */
+.stats-table__group-start,
+.stats-table--merged td:nth-child(5) {
+  border-left: 2px solid var(--line);
+}
+
 .stats-chart {
   background: var(--paper-bright);
   border: 1px solid var(--line);
@@ -320,12 +385,12 @@ main {
 .stats-pie-wrap {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   gap: 1.5rem;
 }
 
 .stats-pie-wrap svg {
-  width: 260px;
+  width: 280px;
   flex-shrink: 0;
 }
 
@@ -334,6 +399,7 @@ main {
   flex-direction: column;
   gap: 0.35rem;
   font-size: 0.82rem;
+  align-content: start;
 }
 
 .stats-pie-legend__item {
@@ -348,13 +414,6 @@ main {
   height: 0.8rem;
   border-radius: 2px;
   flex-shrink: 0;
-}
-
-.table-wrap--stats {
-  flex: none;
-  min-height: auto;
-  max-height: 18rem;
-  margin-bottom: 0.5rem;
 }
 
 .stats-table__num {

@@ -147,7 +147,14 @@ def _split_categories(categories: str) -> list[str]:
     independently in the statistics below, so the SUM of all per-
     category counts can exceed the total number of movies -- this is
     intentional, not a bug, matching how the rest of the site already
-    treats this field as free text rather than a single enum."""
+    treats this field as free text rather than a single enum.
+
+    Categories are stripped and returned as-is; case-normalisation for
+    the purpose of merging variants (e.g. "international competition"
+    and "International Competition") happens in _build_statistics, which
+    uses lowercase keys for aggregation while preserving display casing
+    -- see the comment there for why .title() would be wrong (it
+    mangles acronyms like "SS" and "KT")."""
     return [c.strip() for c in categories.split(",") if c.strip()]
 
 
@@ -158,7 +165,9 @@ def _build_statistics(
     festival_days: list[dict],
 ) -> dict:
     """Computes the data behind the results page's "Statistics" section:
-    a per-day selected-movie count (for the histogram), and two
+    a per-day selected-movie count (a time SERIES, one entry per
+    calendar day -- NOT a histogram, despite the similar name; see
+    per_day_histogram below for the actual histogram), and two
     per-category selected/total breakdowns -- one against the WHOLE
     catalog, one against only the movies the person actually ranked
     (priority > 0), with categories that got zero selections omitted
@@ -167,7 +176,7 @@ def _build_statistics(
     """
     # --- Per-day counts, INCLUDING days with zero selected movies (a
     # day nobody picked anything for should still show as a zero bar,
-    # not be silently missing from the histogram). ---
+    # not be silently missing from the chart). ---
     counts_by_date = {day["date"]: 0 for day in festival_days}
     for entry in schedule:
         counts_by_date[entry["date"]] = counts_by_date.get(entry["date"], 0) + 1
@@ -178,61 +187,94 @@ def _build_statistics(
         sum(d["count"] for d in per_day_counts) / len(per_day_counts) if per_day_counts else 0.0
     )
 
+    # --- The actual HISTOGRAM: for a given N, how many days have
+    # EXACTLY N movies selected -- bins by VALUE, not by date. E.g. if
+    # three different days each have exactly 2 movies selected, that's
+    # one bin (N=2) with a count of 3, regardless of which three days
+    # they are. Every N from 0 to the busiest day's count gets a bin,
+    # even if no day actually has that count, so the chart doesn't have
+    # silently-missing gaps in the middle of its range.
+    days_by_count: dict[int, int] = {}
+    for d in per_day_counts:
+        days_by_count[d["count"]] = days_by_count.get(d["count"], 0) + 1
+    max_count = max((d["count"] for d in per_day_counts), default=0)
+    per_day_histogram = [
+        {"n_movies": n, "n_days": days_by_count.get(n, 0)} for n in range(max_count + 1)
+    ]
+
     # --- Per-category breakdowns. ---
     selected_titles = {entry["title"] for entry in schedule}
     ranked_titles = {title for title, p in priorities.items() if p > 0}
 
-    selected_count_by_category: dict[str, int] = {}
-    ranked_count_by_category: dict[str, int] = {}
-    catalog_count_by_category: dict[str, int] = {}
+    # Aggregate by LOWERCASE key to merge case variants (e.g.
+    # "international competition" and "International Competition" appear
+    # as genuinely different strings in the scraped catalog). The
+    # canonical display name for each key is the first one seen that
+    # is NOT all-lowercase (preferring "International Competition" over
+    # "international competition"), falling back to first-seen if all
+    # variants happen to be lowercase.
+    display_name_by_key: dict[str, str] = {}
+    selected_count_by_key: dict[str, int] = {}
+    ranked_count_by_key: dict[str, int] = {}
+    catalog_count_by_key: dict[str, int] = {}
 
     for title, movie in movies_by_title.items():
         for category in _split_categories(movie.categories):
-            catalog_count_by_category[category] = catalog_count_by_category.get(category, 0) + 1
+            key = category.lower()
+            if key not in display_name_by_key:
+                display_name_by_key[key] = category
+            elif category != category.lower():
+                # Prefer a mixed-case spelling over an all-lowercase one
+                display_name_by_key[key] = category
+            catalog_count_by_key[key] = catalog_count_by_key.get(key, 0) + 1
             if title in ranked_titles:
-                ranked_count_by_category[category] = ranked_count_by_category.get(category, 0) + 1
+                ranked_count_by_key[key] = ranked_count_by_key.get(key, 0) + 1
             if title in selected_titles:
-                selected_count_by_category[category] = (
-                    selected_count_by_category.get(category, 0) + 1
-                )
+                selected_count_by_key[key] = selected_count_by_key.get(key, 0) + 1
 
-    category_stats_catalog = sorted(
+    # Map back to display names for the output
+    catalog_count_by_category = {display_name_by_key[k]: v for k, v in catalog_count_by_key.items()}
+    ranked_count_by_category = {display_name_by_key[k]: v for k, v in ranked_count_by_key.items()}
+    selected_count_by_category = {display_name_by_key[k]: v for k, v in selected_count_by_key.items()}
+
+    category_stats_rows = sorted(
         (
             {
                 "category": category,
-                "selected": selected_count_by_category.get(category, 0),
-                "total": total,
-                "percent": round(100 * selected_count_by_category.get(category, 0) / total, 1),
+                "catalog_selected": selected_count_by_category.get(category, 0),
+                "catalog_total": total,
+                "catalog_percent": round(
+                    100 * selected_count_by_category.get(category, 0) / total, 1
+                ),
+                # ranked_* is None when the user never gave any movie in this
+                # category a non-zero priority -- JS renders empty cells for None,
+                # not "0/0/0%", per the established "empty when not relevant" convention.
+                "ranked_selected": (
+                    selected_count_by_category.get(category, 0)
+                    if category in ranked_count_by_category
+                    else None
+                ),
+                "ranked_total": ranked_count_by_category.get(category, None),
+                "ranked_percent": (
+                    round(
+                        100 * selected_count_by_category.get(category, 0)
+                        / ranked_count_by_category[category],
+                        1,
+                    )
+                    if category in ranked_count_by_category
+                    else None
+                ),
             }
             for category, total in catalog_count_by_category.items()
         ),
-        key=lambda row: row["selected"],
-        reverse=True,
-    )
-
-    category_stats_ranked = sorted(
-        (
-            {
-                "category": category,
-                "selected": selected_count_by_category.get(category, 0),
-                "total": ranked_count_by_category.get(category, 0),
-                "percent": round(
-                    100 * selected_count_by_category.get(category, 0) / ranked_count_by_category[category],
-                    1,
-                ),
-            }
-            for category in ranked_count_by_category
-            if selected_count_by_category.get(category, 0) > 0
-        ),
-        key=lambda row: row["selected"],
-        reverse=True,
+        key=lambda row: row["category"].upper(),  # alphabetical; the whole list is visible at once so this is more scannable than by-selected-count
     )
 
     return {
         "per_day_counts": per_day_counts,
         "per_day_average": round(per_day_average, 2),
-        "category_stats_catalog": category_stats_catalog,
-        "category_stats_ranked": category_stats_ranked,
+        "per_day_histogram": per_day_histogram,
+        "category_stats_rows": category_stats_rows,
     }
 
 

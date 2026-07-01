@@ -233,21 +233,21 @@
 
     <h3 class="subsection-title" data-i18n="statistics_heading">Statistics</h3>
 
-    <h4 class="stats-subheading" data-i18n="stats_per_day_heading">Movies per day</h4>
-    <div id="stats-per-day-chart" class="stats-chart"></div>
-
-    <h4 class="stats-subheading" data-i18n="stats_pie_heading">Selected movies by category</h4>
-    <div id="stats-category-pie" class="stats-chart"></div>
-
-    <h4 class="stats-subheading" data-i18n="stats_table_catalog_heading">Coverage of the full catalog, by category</h4>
-    <div class="table-wrap table-wrap--stats">
-      <table id="stats-table-catalog" class="movies-table stats-table"></table>
+    <div class="stats-top-row">
+      <div class="stats-top-left">
+        <h4 class="stats-subheading" data-i18n="stats_pie_heading">Selected movies by category</h4>
+        <div id="stats-category-pie" class="stats-chart"></div>
+      </div>
+      <div class="stats-top-right">
+        <h4 class="stats-subheading" data-i18n="stats_histogram_heading">Days by movie count</h4>
+        <div id="stats-histogram-chart" class="stats-chart"></div>
+        <h4 class="stats-subheading" data-i18n="stats_per_day_heading">Movies per day</h4>
+        <div id="stats-per-day-chart" class="stats-chart"></div>
+      </div>
     </div>
 
-    <h4 class="stats-subheading" data-i18n="stats_table_ranked_heading">Coverage of your ranked movies, by category</h4>
-    <div class="table-wrap table-wrap--stats">
-      <table id="stats-table-ranked" class="movies-table stats-table"></table>
-    </div>
+    <h4 class="stats-subheading" data-i18n="stats_table_heading">Coverage by category</h4>
+    <table id="stats-table-merged" class="movies-table stats-table stats-table--merged"></table>
   </section>
 
 </main>
